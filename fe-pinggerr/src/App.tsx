@@ -370,7 +370,11 @@ function MainApp() {
                                   https://www.strava.com/activities/12345678901/export_tcx
                                 </code>
                               </li>
-                              <li>TCX file will download automatically</li>
+                              <li>
+                                Put final URL in your browser's address bar and
+                                press Enter. TCX file will download
+                                automatically
+                              </li>
                             </ol>
                           </div>
                           <div>
@@ -406,7 +410,11 @@ function MainApp() {
                                   https://www.strava.com/activities/98765432109/export_tcx
                                 </code>
                               </li>
-                              <li>TCX file will be downloaded</li>
+                              <li>
+                                Put final URL in your browser's address bar and
+                                press Enter. TCX file will download
+                                automatically
+                              </li>
                             </ol>
                           </div>
                         </>
@@ -437,7 +445,10 @@ function MainApp() {
                                   https://www.strava.com/activities/12345678901/export_tcx
                                 </code>
                               </li>
-                              <li>File TCX akan otomatis terdownload</li>
+                              <li>
+                                Buka URL final di browser Anda dan tekan Enter.
+                                File TCX akan otomatis terdownload
+                              </li>
                             </ol>
                           </div>
                           <div>
@@ -474,7 +485,10 @@ function MainApp() {
                                   https://www.strava.com/activities/98765432109/export_tcx
                                 </code>
                               </li>
-                              <li>File TCX akan terdownload</li>
+                              <li>
+                                Buka URL final di browser Anda dan tekan Enter.
+                                File TCX akan otomatis terdownload
+                              </li>
                             </ol>
                           </div>
                         </>
