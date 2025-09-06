@@ -24,7 +24,7 @@ export const AuthCallback: React.FC<AuthCallbackProps> = ({
     const error = urlParams.get("error");
 
     // Debug logging (can be removed in production)
-    console.log("Processing OAuth callback...");
+    // console.log("Processing OAuth callback...");
 
     if (error) {
       onError(`OAuth Error: ${error}`);

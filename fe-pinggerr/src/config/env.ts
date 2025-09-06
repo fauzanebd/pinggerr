@@ -6,7 +6,6 @@ const getRedirectUri = () => {
   }
 
   // For production, use the environment variable or fallback to current origin
-  console.log("Production");
   return (
     import.meta.env.VITE_STRAVA_REDIRECT_URI ||
     `${window.location.origin}/auth/callback`

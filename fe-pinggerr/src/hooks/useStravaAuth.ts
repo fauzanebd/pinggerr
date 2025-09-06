@@ -104,7 +104,7 @@ export const useStravaAuth = () => {
 
       // Trigger a custom event to notify other components
       window.dispatchEvent(new CustomEvent("strava-auth-success"));
-      console.log("Authentication successful");
+      // console.log("Authentication successful");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       console.error("Token exchange error details:", {
