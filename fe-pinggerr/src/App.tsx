@@ -98,27 +98,27 @@ function MainApp() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 sm:mb-12">
           <div className="flex justify-end mb-4">
             <Button
               onClick={() => setLanguage(language === "en" ? "id" : "en")}
               variant="outline"
               size="sm"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground text-xs sm:text-sm"
             >
               {language === "en" ? "🇺🇸 EN (English)" : "🇮🇩 ID (Indonesia)"}
             </Button>
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-4">
+          <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-4">
             {/* <span className="text-brand-pink">Strava</span>{" "}
             <span className="text-brand-green">Activity</span> Visualizer */}
             {language === "en"
               ? "Strava Activity Visualizer"
               : "Visualisasi Aktivitas Strava"}
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-base sm:text-lg px-4">
             {language === "en"
               ? "Create beautiful, shareable graphics of your Strava activities"
               : "Buat grafik aktivitas Strava yang indah dan dapat dibagikan"}
@@ -223,7 +223,7 @@ function MainApp() {
                     : "Hubungkan akun Strava Anda untuk membuat visualisasi yang indah dari aktivitas terbaru Anda"}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="text-center text-leftspace-y-4">
+              <CardContent className="text-center space-y-4">
                 <button
                   onClick={login}
                   className="transition-transform hover:scale-105 active:scale-95"
@@ -236,7 +236,7 @@ function MainApp() {
                 </button>
 
                 {/* TCX File Upload Option */}
-                <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="mt-4 p-3 sm:p-4 bg-orange-50 border border-orange-200 rounded-lg">
                   <p className="text-sm text-orange-800 leading-relaxed mb-3">
                     <strong>
                       🚀{" "}
@@ -250,8 +250,8 @@ function MainApp() {
                   </p>
 
                   {/* What is TCX explanation */}
-                  <div className="text-left mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-xs text-blue-800 leading-relaxed">
+                  <div className="text-left mb-3 p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs sm:text-xs text-blue-800 leading-relaxed">
                       <strong>
                         🔒{" "}
                         {language === "en"
@@ -334,21 +334,21 @@ function MainApp() {
 
                 {/* Instructions */}
                 {showInstructions && (
-                  <div className="text-left mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h3 className="font-medium text-blue-900 mb-3">
+                  <div className="text-left mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 className="font-medium text-blue-900 mb-3 text-sm sm:text-base">
                       📱{" "}
                       {language === "en"
                         ? "How to Download TCX File"
                         : "Cara Download File TCX"}
                     </h3>
 
-                    <div className="text-sm text-blue-700 space-y-2">
+                    <div className="text-xs sm:text-sm text-blue-700 space-y-3">
                       {language === "en" ? (
                         // English Instructions
                         <>
                           <div>
                             <strong>Desktop:</strong>
-                            <ol className="list-decimal list-inside ml-4 mt-1 space-y-1">
+                            <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
                               <li>Log in to Strava on your browser</li>
                               <li>
                                 Open your activity page (e.g.,{" "}
@@ -366,7 +366,7 @@ function MainApp() {
                               </li>
                               <li>
                                 Final URL:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
                                   https://www.strava.com/activities/12345678901/export_tcx
                                 </code>
                               </li>
@@ -375,11 +375,11 @@ function MainApp() {
                           </div>
                           <div>
                             <strong>Mobile:</strong>
-                            <ol className="list-decimal list-inside ml-4 mt-1 space-y-1">
+                            <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
                               <li>Share your activity and copy the link</li>
                               <li>
                                 Shared link looks like:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
                                   https://strava.app.link/abc123xyz
                                 </code>
                               </li>
@@ -389,7 +389,7 @@ function MainApp() {
                               <li>
                                 Clean the URL (remove everything after the
                                 activity ID):{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
                                   https://www.strava.com/activities/98765432109
                                 </code>
                               </li>
@@ -402,7 +402,7 @@ function MainApp() {
                               </li>
                               <li>
                                 Final URL:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
                                   https://www.strava.com/activities/98765432109/export_tcx
                                 </code>
                               </li>
@@ -415,11 +415,11 @@ function MainApp() {
                         <>
                           <div>
                             <strong>Desktop:</strong>
-                            <ol className="list-decimal list-inside ml-4 mt-1 space-y-1">
+                            <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
                               <li>Login ke Strava di browser</li>
                               <li>
                                 Buka halaman aktivitas Anda (contoh:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
                                   https://www.strava.com/activities/12345678901
                                 </code>
                                 )
@@ -433,7 +433,7 @@ function MainApp() {
                               </li>
                               <li>
                                 URL final:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
                                   https://www.strava.com/activities/12345678901/export_tcx
                                 </code>
                               </li>
@@ -442,11 +442,11 @@ function MainApp() {
                           </div>
                           <div>
                             <strong>Mobile:</strong>
-                            <ol className="list-decimal list-inside ml-4 mt-1 space-y-1">
+                            <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
                               <li>Share aktivitas dan copy linknya</li>
                               <li>
                                 Link share seperti:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
                                   https://strava.app.link/def456uvw
                                 </code>
                               </li>
@@ -457,7 +457,7 @@ function MainApp() {
                               <li>
                                 Bersihkan URL (hapus semua setelah ID
                                 aktivitas):{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
                                   https://www.strava.com/activities/98765432109
                                 </code>
                               </li>
@@ -470,7 +470,7 @@ function MainApp() {
                               </li>
                               <li>
                                 URL final:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
                                   https://www.strava.com/activities/98765432109/export_tcx
                                 </code>
                               </li>
