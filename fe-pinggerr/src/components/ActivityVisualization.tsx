@@ -117,6 +117,8 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
     });
   };
 
+  const formatHeartRate = (bpm: number) => `${Math.round(bpm)} BPM`;
+
   // Available stats for selection
   const availableStats = {
     distance: {
@@ -149,6 +151,15 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       value: formatDate(activity.start_date),
       shortLabel: "DATE",
     },
+    ...(activity.has_heartrate && activity.average_heartrate
+      ? {
+          heartrate: {
+            label: "AVG HEART RATE",
+            value: formatHeartRate(activity.average_heartrate),
+            shortLabel: "AVG HR",
+          },
+        }
+      : {}),
   };
 
   // Process polyline data for map visualization with proper constraints
@@ -256,6 +267,9 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       // Add stats panel
       selectedStats.slice(0, 3).forEach((statKey, index) => {
         const stat = availableStats[statKey as keyof typeof availableStats];
+
+        // Skip if stat doesn't exist (e.g., heart rate when not available)
+        if (!stat) return;
 
         // Use proportional spacing based on data area
         const dataAreaHeight = CANVAS_DIMENSIONS.height * 0.35;
