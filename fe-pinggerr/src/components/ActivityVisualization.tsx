@@ -50,11 +50,22 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
     const updateDimensions = () => {
       if (containerRef.current) {
         const container = containerRef.current;
-        // Use more compact proportions - adjust the height ratio
-        const maxWidth = Math.min(container.clientWidth - 32, 993);
+        const containerWidth = container.clientWidth - 32;
+        const maxWidth = Math.min(containerWidth, 993);
         const width = maxWidth;
-        // Reduce height ratio for more compact layout
-        const height = width * 1.0; // More square-like proportions instead of 1.25
+
+        // Better mobile-responsive height calculation
+        const isMobile = width < 640; // Tailwind's sm breakpoint
+        let height;
+
+        if (isMobile) {
+          // Taller aspect ratio for mobile to give more space for text
+          height = width * 1.4; // 1.4:1 ratio for mobile
+        } else {
+          // Square-ish for desktop
+          height = width * 1.1; // Slightly taller than square
+        }
+
         setDimensions({ width, height });
       }
     };
@@ -169,9 +180,14 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       const minLng = Math.min(...lngs);
       const maxLng = Math.max(...lngs);
 
-      // Define layout areas - more compact proportions
-      const dataAreaHeight = canvasDimensions.height * 0.4; // 40% for data
-      const mapAreaHeight = canvasDimensions.height * 0.5; // 50% for map
+      // Define layout areas - responsive proportions
+      const isMobile = canvasDimensions.width < 640;
+      const dataAreaHeight = isMobile
+        ? canvasDimensions.height * 0.45 // 45% for data on mobile (more space for text)
+        : canvasDimensions.height * 0.4; // 40% for data on desktop
+      const mapAreaHeight = isMobile
+        ? canvasDimensions.height * 0.45 // 45% for map on mobile
+        : canvasDimensions.height * 0.5; // 50% for map on desktop
 
       const mapPadding = canvasDimensions.width * 0.08; // 8% padding
       const mapAreaX = mapPadding;
@@ -217,6 +233,9 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   };
 
   const pathPoints = processPolyline();
+
+  // Mobile detection for display optimizations
+  const isMobileDisplay = dimensions.width < 640;
 
   // Helper function to get text width for centering
   const getTextWidth = (
@@ -296,7 +315,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       selectedStats.slice(0, 3).forEach((statKey, index) => {
         const stat = availableStats[statKey as keyof typeof availableStats];
 
-        // Use proportional spacing based on data area
+        // Use proportional spacing based on data area (use desktop proportions for downloads)
         const dataAreaHeight = DOWNLOAD_DIMENSIONS.height * 0.4;
         const availableSpace = dataAreaHeight - 60;
         const spacing = availableSpace / 3;
@@ -518,16 +537,22 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
                     const stat =
                       availableStats[statKey as keyof typeof availableStats];
 
-                    // Use proportional spacing based on data area
-                    const dataAreaHeight = dimensions.height * 0.4;
+                    // Use proportional spacing based on data area (responsive)
+                    const dataAreaHeight = isMobileDisplay
+                      ? dimensions.height * 0.45 // More space for text on mobile
+                      : dimensions.height * 0.4;
                     const availableSpace = dataAreaHeight - 60; // Leave some padding
                     const spacing = availableSpace / 3; // Divide equally among 3 stats
                     const startY = 60; // Top padding
                     const statY = startY + index * spacing;
 
-                    // Responsive font sizes based on canvas size
-                    const labelSize = Math.max(14, dimensions.width * 0.02);
-                    const valueSize = Math.max(28, dimensions.width * 0.048);
+                    // Responsive font sizes with better mobile sizing
+                    const labelSize = isMobileDisplay
+                      ? Math.max(16, dimensions.width * 0.028) // Larger text on mobile
+                      : Math.max(14, dimensions.width * 0.02);
+                    const valueSize = isMobileDisplay
+                      ? Math.max(32, dimensions.width * 0.055) // Larger values on mobile
+                      : Math.max(28, dimensions.width * 0.048);
 
                     const labelWidth = getTextWidth(
                       stat.label,
@@ -590,8 +615,10 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
                 {/* Map Path - just the line, no start/end points */}
                 {pathPoints.length > 1 &&
                   (() => {
-                    // Use proportional stroke width based on canvas size
-                    const strokeWidth = Math.max(2, dimensions.width * 0.008);
+                    // Use proportional stroke width with better mobile sizing
+                    const strokeWidth = isMobileDisplay
+                      ? Math.max(3, dimensions.width * 0.012) // Thicker line on mobile for visibility
+                      : Math.max(2, dimensions.width * 0.008);
 
                     return (
                       <Line
@@ -607,9 +634,11 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
                 {/* Powered by Strava logo at bottom, centered */}
                 {logoImage &&
                   (() => {
-                    // Use proportional sizing for logo
+                    // Use proportional sizing for logo with mobile optimization
                     const logoAreaHeight = dimensions.height * 0.1;
-                    const logoWidth = Math.min(dimensions.width * 0.2, 90);
+                    const logoWidth = isMobileDisplay
+                      ? Math.min(dimensions.width * 0.25, 80) // Slightly larger on mobile
+                      : Math.min(dimensions.width * 0.2, 90);
                     const logoHeight = logoWidth * (30 / 88); // Maintain aspect ratio
                     const logoY =
                       dimensions.height - logoAreaHeight / 2 - logoHeight / 2; // Center in logo area
