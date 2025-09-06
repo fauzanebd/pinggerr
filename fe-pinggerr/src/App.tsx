@@ -179,8 +179,8 @@ function MainApp() {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-4 text-muted-foreground">
-          developed by{" "}
+        <div className="flex items-center justify-center gap-2 mt-4 text-muted-foreground">
+          <span>developed by</span>
           <a
             href="https://instagram.com/fauzanebd"
             target="_blank"
@@ -189,7 +189,7 @@ function MainApp() {
           >
             fauzanebd
           </a>
-          <span className="text-brand-pink"> | </span>
+          <span className="text-brand-pink">|</span>
           <a
             href="https://github.com/fauzanebd/pinggerr"
             target="_blank"
