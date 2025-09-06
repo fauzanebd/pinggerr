@@ -32,8 +32,6 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   // Colors
   const BRAND_PINK = "#F99FD2";
   const BRAND_GREEN = "#165027";
-  const dataColor = invertColors ? BRAND_GREEN : BRAND_PINK;
-  const mapColor = invertColors ? BRAND_PINK : BRAND_GREEN;
 
   // Fixed dimensions for consistent output
   const CANVAS_DIMENSIONS = { width: 800, height: 800 };
@@ -246,11 +244,20 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   };
 
   // Generate image for both preview and download
-  const generateImage = async () => {
+  const generateImage = async (forceColors?: {
+    dataColor: string;
+    mapColor: string;
+  }) => {
     if (!logoImage) return null;
 
     setIsGenerating(true);
     try {
+      // Use either forced colors or current state colors
+      const currentDataColor =
+        forceColors?.dataColor || (invertColors ? BRAND_GREEN : BRAND_PINK);
+      const currentMapColor =
+        forceColors?.mapColor || (invertColors ? BRAND_PINK : BRAND_GREEN);
+
       // Import Konva for creating a temporary stage
       const Konva = (await import("konva")).default;
 
@@ -305,7 +312,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
             fontSize: labelSize,
             fontFamily: "'Funnel Display', sans-serif",
             fontStyle: "400",
-            fill: dataColor,
+            fill: currentDataColor,
           })
         );
 
@@ -322,7 +329,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
             fontSize: valueSize,
             fontFamily: fontFamily,
             fontStyle: "normal",
-            fill: dataColor,
+            fill: currentDataColor,
           })
         );
       });
@@ -333,7 +340,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
         tempLayer.add(
           new Konva.Line({
             points: pathPoints.flatMap((p) => [p.x, p.y]),
-            stroke: mapColor,
+            stroke: currentMapColor,
             strokeWidth: strokeWidth,
             lineJoin: "round",
             lineCap: "round",
@@ -381,7 +388,15 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
 
   // Download image
   const handleDownload = async () => {
-    const imageUrl = generatedImageUrl || (await generateImage());
+    // Ensure we use current color settings for download
+    const currentDataColor = invertColors ? BRAND_GREEN : BRAND_PINK;
+    const currentMapColor = invertColors ? BRAND_PINK : BRAND_GREEN;
+    const imageUrl =
+      generatedImageUrl ||
+      (await generateImage({
+        dataColor: currentDataColor,
+        mapColor: currentMapColor,
+      }));
     if (!imageUrl) return;
 
     // Create download link
