@@ -479,7 +479,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
                           fontSize={labelSize}
                           fontFamily="'Funnel Display', sans-serif"
                           fontStyle="400"
-                          fill={mapColor}
+                          fill={dataColor}
                         />
                         {/* Stat Value - bold font, centered */}
                         <Text

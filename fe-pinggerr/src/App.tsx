@@ -65,8 +65,9 @@ function MainApp() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-foreground mb-4">
-            <span className="text-brand-pink">Strava</span>{" "}
-            <span className="text-brand-green">Activity</span> Visualizer
+            {/* <span className="text-brand-pink">Strava</span>{" "}
+            <span className="text-brand-green">Activity</span> Visualizer */}
+            Strava Activity Visualizer
           </h1>
           <p className="text-muted-foreground text-lg">
             Create beautiful, shareable graphics of your Strava activities
@@ -90,9 +91,7 @@ function MainApp() {
             <Card>
               <CardHeader className="text-center">
                 <CardTitle className="flex items-center justify-center gap-2">
-                  <span className="text-brand-pink">●</span>
                   Connect Your Strava Account
-                  <span className="text-brand-green">●</span>
                 </CardTitle>
                 <CardDescription>
                   Connect your Strava account to generate beautiful
