@@ -15,4 +15,3 @@ A beautiful web application that connects to your Strava account and generates s
 - **Frontend**: React + TypeScript + Vite + Shadcn UI (hosted on Cloudflare Pages)
 - **Backend**: TypeScript Cloudflare Worker for OAuth handling
 - **Authentication**: Strava OAuth 2.0 with secure server-side token exchange
-- **Styling**: Tailwind CSS with custom brand colors
