@@ -1,5 +1,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300;400;500;600;700;800&display=swap");
 
+/* Local font declaration for Special Gothic Expanded One */
+@font-face {
+  font-family: "Special Gothic Expanded One";
+  src: url("/fonts/SpecialGothicExpandedOne-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

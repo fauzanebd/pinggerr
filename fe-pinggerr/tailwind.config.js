@@ -19,6 +19,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ["'Funnel Display'", "sans-serif"],
+        "special-gothic": ["'Special Gothic Expanded One'", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

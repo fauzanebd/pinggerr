@@ -19,6 +19,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
     null
   );
   const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
+  const [fontLoaded, setFontLoaded] = useState(false);
 
   // User customizable options
   const [selectedStats, setSelectedStats] = useState<string[]>([
@@ -35,9 +36,9 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   const mapColor = invertColors ? BRAND_PINK : BRAND_GREEN;
 
   // Fixed dimensions for consistent output
-  const CANVAS_DIMENSIONS = { width: 1080, height: 1080 };
+  const CANVAS_DIMENSIONS = { width: 800, height: 800 };
 
-  // Load Strava logo
+  // Load Strava logo and font
   useEffect(() => {
     const img = new Image();
     img.onload = () => {
@@ -45,14 +46,41 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
     };
     img.src = stravaLogoWhite;
     logoImageRef.current = img;
+
+    // Load the Special Gothic font
+    const loadFont = async () => {
+      try {
+        // Check if FontFace API is available
+        if ("fonts" in document) {
+          const specialGothicFont = new FontFace(
+            "Special Gothic Expanded One",
+            "url(/fonts/SpecialGothicExpandedOne-Regular.ttf)"
+          );
+          await specialGothicFont.load();
+          document.fonts.add(specialGothicFont);
+          console.log(
+            "✅ Special Gothic Expanded One font loaded successfully"
+          );
+          setFontLoaded(true);
+        } else {
+          // Fallback: wait a bit for font to load naturally
+          setTimeout(() => setFontLoaded(true), 2000);
+        }
+      } catch (error) {
+        console.warn("❌ Font loading failed, using fallback:", error);
+        setFontLoaded(true); // Continue with fallback font
+      }
+    };
+
+    loadFont();
   }, []);
 
   // Generate image when parameters change
   useEffect(() => {
-    if (logoImage) {
+    if (logoImage && fontLoaded) {
       generateImage();
     }
-  }, [logoImage, selectedStats, invertColors, activity]);
+  }, [logoImage, fontLoaded, selectedStats, invertColors, activity]);
 
   // Helper functions for formatting
   const formatDistance = (meters: number) => `${(meters / 1000).toFixed(1)} km`;
@@ -142,10 +170,10 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       const maxLng = Math.max(...lngs);
 
       // Define layout areas - fixed proportions for consistent output
-      const dataAreaHeight = canvasDimensions.height * 0.4; // 40% for data
-      const mapAreaHeight = canvasDimensions.height * 0.5; // 50% for map
+      const dataAreaHeight = canvasDimensions.height * 0.5;
+      const mapAreaHeight = canvasDimensions.height * 0.3;
 
-      const mapPadding = canvasDimensions.width * 0.08; // 8% padding
+      const mapPadding = canvasDimensions.width * 0.2; // 8% padding
       const mapAreaX = mapPadding;
       const mapAreaY = dataAreaHeight;
       const mapAreaWidth = canvasDimensions.width - mapPadding * 2;
@@ -194,12 +222,13 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   const getTextWidth = (
     text: string,
     fontSize: number,
-    fontWeight: string = "normal"
+    fontWeight: string = "normal",
+    fontFamily: string = "'Funnel Display', sans-serif"
   ) => {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
     if (context) {
-      context.font = `${fontWeight} ${fontSize}px 'Funnel Display', sans-serif`;
+      context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
       return context.measureText(text).width;
     }
     return 0;
@@ -229,18 +258,29 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
         const stat = availableStats[statKey as keyof typeof availableStats];
 
         // Use proportional spacing based on data area
-        const dataAreaHeight = CANVAS_DIMENSIONS.height * 0.5;
-        const availableSpace = dataAreaHeight - 70;
+        const dataAreaHeight = CANVAS_DIMENSIONS.height * 0.35;
+        const availableSpace = dataAreaHeight - 40;
         const spacing = availableSpace / 3;
-        const startY = 70;
+        const startY = 150;
         const statY = startY + index * spacing;
 
         // Font sizes based on canvas size
-        const labelSize = Math.max(16, CANVAS_DIMENSIONS.width * 0.02);
-        const valueSize = Math.max(32, CANVAS_DIMENSIONS.width * 0.048);
+        // const labelSize = Math.max(24, CANVAS_DIMENSIONS.width * 0.02);
+        // const valueSize = Math.max(48, CANVAS_DIMENSIONS.width * 0.048);
+
+        const labelSize = 18;
+        const valueSize = 38;
 
         const labelWidth = getTextWidth(stat.label, labelSize, "500");
-        const valueWidth = getTextWidth(stat.value, valueSize, "bold");
+        const valueFontFamily = fontLoaded
+          ? "'Special Gothic Expanded One', 'Arial Black', sans-serif"
+          : "'Arial Black', sans-serif";
+        const valueWidth = getTextWidth(
+          stat.value,
+          valueSize,
+          "400",
+          valueFontFamily
+        );
 
         // Add label
         tempLayer.add(
@@ -255,15 +295,19 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
           })
         );
 
-        // Add value
+        // Add value with font fallback
+        const fontFamily = fontLoaded
+          ? "'Special Gothic Expanded One', 'Arial Black', sans-serif"
+          : "'Arial Black', sans-serif";
+
         tempLayer.add(
           new Konva.Text({
             x: CANVAS_DIMENSIONS.width / 2 - valueWidth / 2,
             y: statY + labelSize + 4,
             text: stat.value,
             fontSize: valueSize,
-            fontFamily: "'Funnel Display', sans-serif",
-            fontStyle: "bold",
+            fontFamily: fontFamily,
+            fontStyle: "normal",
             fill: dataColor,
           })
         );
@@ -284,8 +328,8 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       }
 
       // Add Strava logo
-      const logoAreaHeight = CANVAS_DIMENSIONS.height * 0.15;
-      const logoWidth = Math.min(CANVAS_DIMENSIONS.width * 0.2, 90);
+      const logoAreaHeight = CANVAS_DIMENSIONS.height * 0.3;
+      const logoWidth = Math.min(CANVAS_DIMENSIONS.width * 0.15, 1000);
       const logoHeight = logoWidth * (30 / 88);
       const logoY =
         CANVAS_DIMENSIONS.height - logoAreaHeight / 2 - logoHeight / 2;
@@ -363,6 +407,14 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       <CardContent>
         {/* Controls */}
         <div className="mb-4 space-y-4">
+          {/* Font loading status */}
+          {/* <div className="text-xs text-muted-foreground">
+            Font status:{" "}
+            {fontLoaded
+              ? "✅ Special Gothic Expanded One loaded"
+              : "⏳ Loading font..."}
+          </div> */}
+
           <div>
             <label className="text-sm font-medium mb-2 block">
               Maximum 3 stats can be selected. Deselect one to enable others.
