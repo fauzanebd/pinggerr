@@ -164,6 +164,16 @@ function MainApp() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-muted-foreground">
+          developed by{" "}
+          <a
+            href="https://instagram.com/fauzanebd"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-brand-green hover:text-brand-pink font-medium transition-colors"
+          >
+            fauzanebd
+          </a>
+          <span className="text-brand-pink"> | </span>
           <a
             href="https://github.com/fauzanebd/pinggerr"
             target="_blank"
