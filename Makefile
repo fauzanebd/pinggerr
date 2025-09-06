@@ -11,8 +11,8 @@ NC = \033[0m # No Color
 .DEFAULT_GOAL := help
 
 # Variables
-FRONTEND_DIR = frontend
-BACKEND_DIR = backend
+FRONTEND_DIR = fe-pinggerr
+BACKEND_DIR = be-pinggerr
 
 .PHONY: help install dev dev-frontend dev-backend build build-frontend build-backend test lint clean stop logs setup-env check-deps
 

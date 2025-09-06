@@ -58,7 +58,7 @@ A beautiful web application that connects to your Strava account and generates s
 1. Navigate to the backend directory:
 
    ```bash
-   cd backend
+   cd be-pinggerr
    ```
 
 2. Install dependencies:
@@ -70,13 +70,13 @@ A beautiful web application that connects to your Strava account and generates s
 3. Set up Cloudflare secrets (for development):
 
    ```bash
-   npx wrangler secret put STRAVA_CLIENT_ID
-   npx wrangler secret put STRAVA_CLIENT_SECRET
+   pnpm wrangler secret put STRAVA_CLIENT_ID
+   pnpm wrangler secret put STRAVA_CLIENT_SECRET
    ```
 
 4. Start the development server:
    ```bash
-   npm run start
+   pnpm run start
    ```
 
 ### Strava App Configuration
@@ -136,13 +136,13 @@ The Cloudflare Worker provides:
 1. Deploy the worker:
 
    ```bash
-   npm run deploy
+   pnpm run deploy
    ```
 
 2. Set production secrets:
    ```bash
-   npx wrangler secret put STRAVA_CLIENT_ID --env production
-   npx wrangler secret put STRAVA_CLIENT_SECRET --env production
+   pnpm wrangler secret put STRAVA_CLIENT_ID --env production
+   pnpm wrangler secret put STRAVA_CLIENT_SECRET --env production
    ```
 
 ## Security

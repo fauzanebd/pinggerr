@@ -5,16 +5,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"pnpm --filter frontend dev\" \"pnpm --filter backend start\"",
-    "build": "pnpm --filter frontend build && pnpm --filter backend build",
+    "dev": "concurrently \"pnpm --filter fe-pinggerr dev\" \"pnpm --filter be-pinggerr start\"",
+    "build": "pnpm --filter fe-pinggerr build && pnpm --filter be-pinggerr build",
     "deploy": "./deploy.sh",
-    "install:all": "pnpm install && pnpm --filter frontend install && pnpm --filter backend install",
-    "lint": "pnpm --filter frontend lint",
+    "install:all": "pnpm install && pnpm --filter fe-pinggerr install && pnpm --filter be-pinggerr install",
+    "lint": "pnpm --filter fe-pinggerr lint",
     "test": "echo \"No tests specified\" && exit 0"
   },
   "workspaces": [
-    "frontend",
-    "backend"
+    "fe-pinggerr",
+    "be-pinggerr"
   ],
   "keywords": [
     "strava",

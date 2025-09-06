@@ -39,7 +39,7 @@ Before starting, make sure you have:
    **Backend (Wrangler secrets):**
 
    ```bash
-   cd backend
+   cd be-pinggerr
    wrangler secret put STRAVA_CLIENT_ID --local
    wrangler secret put STRAVA_CLIENT_SECRET --local
    ```
@@ -123,7 +123,7 @@ The backend uses Cloudflare Worker secrets:
 
 ```bash
 # Set these with wrangler
-cd backend
+cd be-pinggerr
 echo "your_client_id" | wrangler secret put STRAVA_CLIENT_ID --local
 echo "your_client_secret" | wrangler secret put STRAVA_CLIENT_SECRET --local
 ```

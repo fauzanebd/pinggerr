@@ -59,7 +59,7 @@ if ask_yes_no "Do you want to set up Strava secrets for the backend?"; then
     echo "You'll be prompted to enter your Strava credentials."
     echo ""
     
-    cd backend
+    cd be-pinggerr
     
     echo "Setting STRAVA_CLIENT_ID:"
     wrangler secret put STRAVA_CLIENT_ID --local

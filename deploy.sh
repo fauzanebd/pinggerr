@@ -57,7 +57,7 @@ check_dependencies() {
 deploy_backend() {
     print_status "Deploying backend (Cloudflare Worker)..."
     
-    cd backend
+    cd be-pinggerr
     
     # Install dependencies
     print_status "Installing backend dependencies..."

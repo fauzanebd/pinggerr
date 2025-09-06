@@ -12,7 +12,7 @@ importers:
         specifier: ^9.0.1
         version: 9.2.1
 
-  backend:
+  be-pinggerr:
     devDependencies:
       '@cloudflare/vitest-pool-workers':
         specifier: ^0.8.19
@@ -27,7 +27,7 @@ importers:
         specifier: ^4.34.0
         version: 4.34.0
 
-  frontend:
+  fe-pinggerr:
     dependencies:
       '@googlemaps/polyline-codec':
         specifier: ^1.0.28

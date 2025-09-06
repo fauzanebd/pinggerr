@@ -25,7 +25,7 @@ Use the automated deployment script:
 #### Install Dependencies
 
 ```bash
-cd backend
+cd be-pinggerr
 npm install
 ```
 
@@ -43,7 +43,7 @@ wrangler secret put STRAVA_CLIENT_SECRET
 npm run deploy
 ```
 
-The worker will be available at: `https://backend.<your-subdomain>.workers.dev`
+The worker will be available at: `https://be-pingerr.fauzanebd.workers.dev`
 
 ### 2. Frontend (Cloudflare Pages)
 
@@ -73,9 +73,9 @@ wrangler pages deploy dist --project-name strava-activity-visualizer
 In Cloudflare Pages dashboard, add these environment variables:
 
 ```
-VITE_WORKER_URL=https://backend.<your-subdomain>.workers.dev
+VITE_WORKER_URL=https://be-pingerr.fauzanebd.workers.dev
 VITE_STRAVA_CLIENT_ID=<your-strava-client-id>
-VITE_STRAVA_REDIRECT_URI=https://<your-pages-domain>.pages.dev/auth/callback
+VITE_STRAVA_REDIRECT_URI=https://fe-pingerr.pages.dev/auth/callback
 ```
 
 ### 3. Configure Strava App
@@ -171,7 +171,7 @@ wrangler tail
 ### Backend Updates
 
 ```bash
-cd backend
+cd be-pinggerr
 npm run deploy
 ```
 
