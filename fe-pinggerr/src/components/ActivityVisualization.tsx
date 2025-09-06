@@ -11,7 +11,6 @@ import {
 import { decode } from "@googlemaps/polyline-codec";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShareDialog } from "@/components/ShareDialog";
 import type { ActivityVisualizationProps } from "@/types/strava";
 
 // Strava logo
@@ -154,7 +153,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   };
 
   // Process polyline data for map visualization with proper constraints
-  const processPolyline = () => {
+  const processPolyline = (canvasDimensions = dimensions) => {
     const polyline = activity.map?.polyline || activity.map?.summary_polyline;
     if (!polyline) return [];
 
@@ -171,13 +170,13 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       const maxLng = Math.max(...lngs);
 
       // Define layout areas - more compact proportions
-      const dataAreaHeight = dimensions.height * 0.4; // 40% for data
-      const mapAreaHeight = dimensions.height * 0.5; // 50% for map
+      const dataAreaHeight = canvasDimensions.height * 0.4; // 40% for data
+      const mapAreaHeight = canvasDimensions.height * 0.5; // 50% for map
 
-      const mapPadding = dimensions.width * 0.08; // 8% padding
+      const mapPadding = canvasDimensions.width * 0.08; // 8% padding
       const mapAreaX = mapPadding;
       const mapAreaY = dataAreaHeight;
-      const mapAreaWidth = dimensions.width - mapPadding * 2;
+      const mapAreaWidth = canvasDimensions.width - mapPadding * 2;
 
       // Calculate the scale to fit the route in the map area while maintaining aspect ratio
       const latRange = maxLat - minLat;
@@ -268,33 +267,117 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
     return canvas;
   };
 
+  // Fixed dimensions for consistent downloads across all devices
+  const DOWNLOAD_DIMENSIONS = { width: 1080, height: 1080 };
+
   // Generate image for download/sharing
   const generateImage = async () => {
-    if (!stageRef.current) return null;
+    if (!stageRef.current || !logoImage) return null;
 
     setIsGenerating(true);
     try {
-      // Temporarily hide checker pattern background for download
-      const layer = stageRef.current.findOne("Layer");
-      const backgroundImage = layer.findOne("#checkerBackground");
-      const backgroundRect = layer.findOne("#backgroundRect");
+      // Import Konva for creating a temporary stage
+      const Konva = (await import("konva")).default;
 
-      if (backgroundImage) backgroundImage.visible(false);
-      if (backgroundRect) backgroundRect.visible(false);
-
-      layer.draw();
-
-      // Get the stage as a data URL with transparent background
-      const dataURL = stageRef.current.toDataURL({
-        mimeType: "image/png",
-        quality: 1,
-        pixelRatio: 2, // High DPI
+      // Create a temporary stage for image generation with fixed dimensions
+      const tempStage = new Konva.Stage({
+        container: document.createElement("div"),
+        width: DOWNLOAD_DIMENSIONS.width,
+        height: DOWNLOAD_DIMENSIONS.height,
       });
 
-      // Restore background for preview
-      if (backgroundImage) backgroundImage.visible(true);
-      if (backgroundRect) backgroundRect.visible(true);
-      layer.draw();
+      const tempLayer = new Konva.Layer();
+      tempStage.add(tempLayer);
+
+      // Calculate layout for download dimensions
+      const downloadPathPoints = processPolyline(DOWNLOAD_DIMENSIONS);
+
+      // Add stats panel with download dimensions
+      selectedStats.slice(0, 3).forEach((statKey, index) => {
+        const stat = availableStats[statKey as keyof typeof availableStats];
+
+        // Use proportional spacing based on data area
+        const dataAreaHeight = DOWNLOAD_DIMENSIONS.height * 0.4;
+        const availableSpace = dataAreaHeight - 60;
+        const spacing = availableSpace / 3;
+        const startY = 60;
+        const statY = startY + index * spacing;
+
+        // Responsive font sizes based on canvas size
+        const labelSize = Math.max(14, DOWNLOAD_DIMENSIONS.width * 0.02);
+        const valueSize = Math.max(28, DOWNLOAD_DIMENSIONS.width * 0.048);
+
+        const labelWidth = getTextWidth(stat.label, labelSize, "500");
+        const valueWidth = getTextWidth(stat.value, valueSize, "bold");
+
+        // Add label
+        tempLayer.add(
+          new Konva.Text({
+            x: DOWNLOAD_DIMENSIONS.width / 2 - labelWidth / 2,
+            y: statY,
+            text: stat.label,
+            fontSize: labelSize,
+            fontFamily: "'Funnel Display', sans-serif",
+            fontStyle: "400",
+            fill: dataColor,
+          })
+        );
+
+        // Add value
+        tempLayer.add(
+          new Konva.Text({
+            x: DOWNLOAD_DIMENSIONS.width / 2 - valueWidth / 2,
+            y: statY + labelSize + 4,
+            text: stat.value,
+            fontSize: valueSize,
+            fontFamily: "'Funnel Display', sans-serif",
+            fontStyle: "bold",
+            fill: dataColor,
+          })
+        );
+      });
+
+      // Add map path if available
+      if (downloadPathPoints.length > 1) {
+        const strokeWidth = Math.max(2, DOWNLOAD_DIMENSIONS.width * 0.008);
+        tempLayer.add(
+          new Konva.Line({
+            points: downloadPathPoints.flatMap((p) => [p.x, p.y]),
+            stroke: mapColor,
+            strokeWidth: strokeWidth,
+            lineJoin: "round",
+            lineCap: "round",
+          })
+        );
+      }
+
+      // Add Strava logo
+      const logoAreaHeight = DOWNLOAD_DIMENSIONS.height * 0.1;
+      const logoWidth = Math.min(DOWNLOAD_DIMENSIONS.width * 0.2, 90);
+      const logoHeight = logoWidth * (30 / 88);
+      const logoY =
+        DOWNLOAD_DIMENSIONS.height - logoAreaHeight / 2 - logoHeight / 2;
+
+      tempLayer.add(
+        new Konva.Image({
+          image: logoImage,
+          x: DOWNLOAD_DIMENSIONS.width / 2 - logoWidth / 2,
+          y: logoY,
+          width: logoWidth,
+          height: logoHeight,
+        })
+      );
+
+      // Draw and export
+      tempLayer.draw();
+      const dataURL = tempStage.toDataURL({
+        mimeType: "image/png",
+        quality: 1,
+        pixelRatio: 2,
+      });
+
+      // Clean up
+      tempStage.destroy();
 
       setGeneratedImageUrl(dataURL);
       return dataURL;
@@ -342,18 +425,6 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
             >
               {isGenerating ? "Generating..." : "💾 Download"}
             </Button>
-            <ShareDialog
-              activity={activity}
-              imageUrl={generatedImageUrl || undefined}
-            >
-              <Button
-                variant="outline"
-                disabled={isGenerating}
-                className="border-brand-green text-brand-green hover:bg-brand-green hover:text-white"
-              >
-                📤 Share
-              </Button>
-            </ShareDialog>
           </div>
         </CardTitle>
       </CardHeader>

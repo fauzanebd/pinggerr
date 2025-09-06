@@ -78,9 +78,3 @@ export interface ActivityVisualizationProps {
   activity: StravaActivity;
   onDownload?: (imageUrl: string) => void;
 }
-
-export interface ShareDialogProps {
-  activity: StravaActivity;
-  imageUrl?: string;
-  children: React.ReactNode;
-}
