@@ -229,15 +229,15 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
         const stat = availableStats[statKey as keyof typeof availableStats];
 
         // Use proportional spacing based on data area
-        const dataAreaHeight = CANVAS_DIMENSIONS.height * 0.4;
-        const availableSpace = dataAreaHeight - 60;
+        const dataAreaHeight = CANVAS_DIMENSIONS.height * 0.5;
+        const availableSpace = dataAreaHeight - 70;
         const spacing = availableSpace / 3;
-        const startY = 60;
+        const startY = 70;
         const statY = startY + index * spacing;
 
         // Font sizes based on canvas size
-        const labelSize = Math.max(14, CANVAS_DIMENSIONS.width * 0.02);
-        const valueSize = Math.max(28, CANVAS_DIMENSIONS.width * 0.048);
+        const labelSize = Math.max(16, CANVAS_DIMENSIONS.width * 0.02);
+        const valueSize = Math.max(32, CANVAS_DIMENSIONS.width * 0.048);
 
         const labelWidth = getTextWidth(stat.label, labelSize, "500");
         const valueWidth = getTextWidth(stat.value, valueSize, "bold");
@@ -284,7 +284,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       }
 
       // Add Strava logo
-      const logoAreaHeight = CANVAS_DIMENSIONS.height * 0.1;
+      const logoAreaHeight = CANVAS_DIMENSIONS.height * 0.15;
       const logoWidth = Math.min(CANVAS_DIMENSIONS.width * 0.2, 90);
       const logoHeight = logoWidth * (30 / 88);
       const logoY =
@@ -365,7 +365,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
         <div className="mb-4 space-y-4">
           <div>
             <label className="text-sm font-medium mb-2 block">
-              Select 3 stats to display:
+              Maximum 3 stats can be selected. Deselect one to enable others.
             </label>
             <div className="flex flex-wrap gap-2">
               {Object.entries(availableStats).map(([key, stat]) => (

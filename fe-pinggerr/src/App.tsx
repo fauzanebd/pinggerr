@@ -116,7 +116,7 @@ function MainApp() {
               {/* Connection Status */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
+                  <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-2">
                       Connected to Strava
                       <Badge className="bg-brand-green text-white">
@@ -127,7 +127,7 @@ function MainApp() {
                       onClick={logout}
                       variant="outline"
                       size="sm"
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-muted-foreground hover:text-foreground self-start sm:self-auto"
                     >
                       Disconnect
                     </Button>

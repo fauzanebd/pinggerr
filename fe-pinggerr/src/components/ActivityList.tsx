@@ -17,7 +17,11 @@ export const ActivityList: React.FC<ActivityListProps> = ({
   const { fetchActivities, isAuthenticated, tokens } = useStravaAuth();
   const [activities, setActivities] = useState<StravaActivity[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMorePages, setHasMorePages] = useState(true);
+  const perPage = 30; // Strava's default per_page value
 
   useEffect(() => {
     // Only load activities if authenticated and tokens are available
@@ -45,14 +49,50 @@ export const ActivityList: React.FC<ActivityListProps> = ({
     setError(null);
 
     try {
-      const data = await fetchActivities(1, 20); // Fetch last 20 activities
-      setActivities(data);
+      const data = await fetchActivities(1, perPage);
+      // Filter to only show running activities
+      const runningActivities = data.filter(
+        (activity) => activity.type === "Run" || activity.sport_type === "Run"
+      );
+
+      setActivities(runningActivities);
+      setCurrentPage(1);
+      // If we got less than perPage activities, we've reached the end
+      setHasMorePages(data.length === perPage);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load activities"
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreActivities = async () => {
+    if (!hasMorePages || loadingMore) return;
+
+    setLoadingMore(true);
+    setError(null);
+
+    try {
+      const nextPage = currentPage + 1;
+      const data = await fetchActivities(nextPage, perPage);
+
+      // Filter to only show running activities
+      const runningActivities = data.filter(
+        (activity) => activity.type === "Run" || activity.sport_type === "Run"
+      );
+
+      setActivities((prev) => [...prev, ...runningActivities]);
+      setCurrentPage(nextPage);
+      // If we got less than perPage activities, we've reached the end
+      setHasMorePages(data.length === perPage);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load more activities"
+      );
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -159,8 +199,7 @@ export const ActivityList: React.FC<ActivityListProps> = ({
           <Badge variant="outline">{activities.length}</Badge>
         </CardTitle>
         <CardDescription>
-          Select an activity to create a beautiful visualization (we only
-          display last 20 activities)
+          Select a running activity to create a beautiful visualization
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -171,7 +210,8 @@ export const ActivityList: React.FC<ActivityListProps> = ({
               className="border rounded-lg p-4 hover:bg-muted/50 cursor-pointer transition-colors"
               onClick={() => onSelectActivity(activity)}
             >
-              <div className="flex items-start justify-between">
+              {/* Desktop layout */}
+              <div className="hidden sm:flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className="font-medium truncate">{activity.name}</h3>
@@ -219,9 +259,74 @@ export const ActivityList: React.FC<ActivityListProps> = ({
                   Visualize →
                 </Button>
               </div>
+
+              {/* Mobile layout */}
+              <div className="sm:hidden">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="font-medium truncate flex-1">
+                    {activity.name}
+                  </h3>
+                  <Badge className={getActivityTypeColor(activity.type)}>
+                    {activity.type}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground mb-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-brand-pink">📏</span>
+                      <span>{formatDistance(activity.distance)}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-brand-green">⏱️</span>
+                      <span>{formatTime(activity.moving_time)}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-brand-pink">🚀</span>
+                      <span>
+                        {formatPace(activity.distance, activity.moving_time)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-brand-green">⛰️</span>
+                      <span>{activity.total_elevation_gain}m</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-muted-foreground">
+                    {formatDate(activity.start_date)}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-brand-pink hover:text-brand-green hover:bg-brand-pink/10"
+                  >
+                    Visualize →
+                  </Button>
+                </div>
+              </div>
             </div>
           ))}
         </div>
+
+        {/* Load More Button */}
+        {hasMorePages && (
+          <div className="mt-4 text-center">
+            <Button
+              onClick={loadMoreActivities}
+              variant="outline"
+              disabled={loadingMore}
+              className="w-full"
+            >
+              {loadingMore ? "Loading..." : "Load More Activities"}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
