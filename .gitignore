@@ -99,3 +99,6 @@ temp/
 
 # Local Netlify folder
 .netlify
+
+DEPLOYMENT.md
+LOCAL_DEVELOPMENT.md
