@@ -360,6 +360,28 @@ function MainApp() {
                         : "Cara Download File TCX"}
                     </h3>
 
+                    {/* Video Tutorial */}
+                    <div className="mb-4 flex justify-center">
+                      <div className="w-full max-w-sm">
+                        <iframe
+                          width="100%"
+                          height="315"
+                          src="https://www.youtube.com/embed/M_HG8T7v_7c"
+                          title="TCX Download Tutorial"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          className="rounded-lg"
+                        ></iframe>
+                      </div>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-blue-700 mb-3 text-center italic">
+                      {language === "en"
+                        ? "📺 Watch the video tutorial above, or follow the written steps below"
+                        : "📺 Tonton tutorial video di atas, atau ikuti langkah tertulis di bawah"}
+                    </p>
+
                     <div className="text-xs sm:text-sm text-blue-700 space-y-3">
                       {language === "en" ? (
                         // English Instructions
@@ -406,7 +428,8 @@ function MainApp() {
                                 </code>
                               </li>
                               <li>
-                                Open the link in browser and log in to Strava
+                                Open the link in browser incognito mode and log
+                                in to Strava
                               </li>
                               <li>
                                 Clean the URL (remove everything after the
