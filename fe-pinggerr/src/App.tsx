@@ -163,7 +163,7 @@ function MainApp() {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-16 text-muted-foreground">
+        <div className="text-center mt-8 text-muted-foreground">
           <a
             href="https://github.com/fauzanebd/pinggerr"
             target="_blank"
