@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
 
 interface AuthCallbackProps {
@@ -11,8 +11,14 @@ export const AuthCallback: React.FC<AuthCallbackProps> = ({
   onError,
 }) => {
   const { exchangeCode, isLoading, error } = useStravaAuth();
+  const hasAttemptedExchange = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple attempts to exchange the same code
+    if (hasAttemptedExchange.current) {
+      return;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
     const error = urlParams.get("error");
@@ -26,6 +32,7 @@ export const AuthCallback: React.FC<AuthCallbackProps> = ({
     }
 
     if (code) {
+      hasAttemptedExchange.current = true;
       exchangeCode(code)
         .then(() => {
           // Small delay to ensure state is updated
@@ -39,7 +46,7 @@ export const AuthCallback: React.FC<AuthCallbackProps> = ({
     } else {
       onError("No authorization code received");
     }
-  }, [exchangeCode, onSuccess, onError]);
+  }, []); // Empty dependency array since we only want this to run once
 
   if (isLoading) {
     return (
