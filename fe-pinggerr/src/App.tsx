@@ -278,33 +278,51 @@ function MainApp() {
                       onClick={() => setShowInstructions(!showInstructions)}
                       variant="outline"
                       size="sm"
-                      className="text-orange-700 border-orange-300 hover:bg-orange-100"
+                      className="text-orange-700 border-orange-300 hover:bg-orange-100 w-full sm:w-auto h-auto py-2 px-3"
                     >
-                      📋{" "}
-                      {language === "en"
-                        ? `${
-                            showInstructions ? "Hide" : "Show"
-                          } Instructions for Downloading TCX File`
-                        : `${
-                            showInstructions ? "Sembunyikan" : "Tampilkan"
-                          } Instruksi Untuk Mengunduh File TCX`}
+                      <span className="flex flex-col sm:flex-row sm:items-center gap-1 text-center sm:text-left">
+                        <span>
+                          {language === "en"
+                            ? `${
+                                showInstructions ? "📋 Hide" : "📋 Show"
+                              } Instructions`
+                            : `${
+                                showInstructions
+                                  ? "📋 Sembunyikan"
+                                  : "📋 Tampilkan"
+                              } Instruksi`}
+                        </span>
+                        <span className="hidden sm:inline">
+                          {language === "en"
+                            ? "for Downloading TCX File"
+                            : "Untuk Mengunduh File TCX"}
+                        </span>
+                        <span className="sm:hidden">
+                          {language === "en"
+                            ? "for Downloading"
+                            : "Untuk Mengunduh"}
+                        </span>
+                        <span className="sm:hidden">
+                          {language === "en" ? "TCX File" : "File TCX"}
+                        </span>
+                      </span>
                     </Button>
                   </div>
 
                   {/* File Upload */}
                   <div className="space-y-3">
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="file"
                         accept=".tcx"
                         onChange={handleFileSelect}
-                        className="flex-1 px-3 py-2 border border-orange-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent"
+                        className="w-full px-3 py-2 border border-orange-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent"
                         disabled={isProcessingTcx}
                       />
                       <Button
                         onClick={handleProcessTcx}
                         disabled={!selectedFile || isProcessingTcx}
-                        className="bg-brand-green hover:bg-brand-pink/90 text-white text-sm px-4 py-2"
+                        className="bg-brand-green hover:bg-brand-pink/90 text-white text-sm px-4 py-2 w-full sm:w-auto sm:min-w-[140px]"
                       >
                         {isProcessingTcx
                           ? language === "en"
@@ -352,7 +370,7 @@ function MainApp() {
                               <li>Log in to Strava on your browser</li>
                               <li>
                                 Open your activity page (e.g.,{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
                                   https://www.strava.com/activities/12345678901
                                 </code>
                                 )
