@@ -17,6 +17,9 @@ export const AuthCallback: React.FC<AuthCallbackProps> = ({
     const code = urlParams.get("code");
     const error = urlParams.get("error");
 
+    // Debug logging (can be removed in production)
+    console.log("Processing OAuth callback...");
+
     if (error) {
       onError(`OAuth Error: ${error}`);
       return;
@@ -25,7 +28,10 @@ export const AuthCallback: React.FC<AuthCallbackProps> = ({
     if (code) {
       exchangeCode(code)
         .then(() => {
-          onSuccess();
+          // Small delay to ensure state is updated
+          setTimeout(() => {
+            onSuccess();
+          }, 100);
         })
         .catch((err) => {
           onError(err.message);

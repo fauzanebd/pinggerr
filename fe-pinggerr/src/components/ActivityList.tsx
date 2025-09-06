@@ -9,38 +9,35 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
-
-interface StravaActivity {
-  id: number;
-  name: string;
-  distance: number;
-  moving_time: number;
-  elapsed_time: number;
-  total_elevation_gain: number;
-  type: string;
-  start_date: string;
-  average_speed: number;
-  max_speed: number;
-  map?: {
-    polyline?: string;
-    summary_polyline?: string;
-  };
-}
-
-interface ActivityListProps {
-  onSelectActivity: (activity: StravaActivity) => void;
-}
+import type { StravaActivity, ActivityListProps } from "@/types/strava";
 
 export const ActivityList: React.FC<ActivityListProps> = ({
   onSelectActivity,
 }) => {
-  const { fetchActivities } = useStravaAuth();
+  const { fetchActivities, isAuthenticated, tokens } = useStravaAuth();
   const [activities, setActivities] = useState<StravaActivity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadActivities();
+    // Only load activities if authenticated and tokens are available
+    if (isAuthenticated && tokens) {
+      loadActivities();
+    }
+  }, [isAuthenticated, tokens]);
+
+  // Listen for auth success events
+  useEffect(() => {
+    const handleAuthSuccess = () => {
+      // Small delay to ensure tokens are set
+      setTimeout(() => {
+        loadActivities();
+      }, 200);
+    };
+
+    window.addEventListener("strava-auth-success", handleAuthSuccess);
+    return () =>
+      window.removeEventListener("strava-auth-success", handleAuthSuccess);
   }, []);
 
   const loadActivities = async () => {
@@ -162,7 +159,8 @@ export const ActivityList: React.FC<ActivityListProps> = ({
           <Badge variant="outline">{activities.length}</Badge>
         </CardTitle>
         <CardDescription>
-          Select an activity to create a beautiful visualization
+          Select an activity to create a beautiful visualization (we only
+          display last 20 activities)
         </CardDescription>
       </CardHeader>
       <CardContent>

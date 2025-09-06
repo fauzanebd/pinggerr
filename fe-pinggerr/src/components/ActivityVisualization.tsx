@@ -1,31 +1,21 @@
 import { useRef, useEffect, useState } from "react";
-import { Stage, Layer, Line, Circle, Text, Rect, Group } from "react-konva";
+import {
+  Stage,
+  Layer,
+  Line,
+  Text,
+  Rect,
+  Group,
+  Image as KonvaImage,
+} from "react-konva";
 import { decode } from "@googlemaps/polyline-codec";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShareDialog } from "@/components/ShareDialog";
+import type { ActivityVisualizationProps } from "@/types/strava";
 
-interface StravaActivity {
-  id: number;
-  name: string;
-  distance: number;
-  moving_time: number;
-  elapsed_time: number;
-  total_elevation_gain: number;
-  type: string;
-  start_date: string;
-  average_speed: number;
-  max_speed: number;
-  map?: {
-    polyline?: string;
-    summary_polyline?: string;
-  };
-}
-
-interface ActivityVisualizationProps {
-  activity: StravaActivity;
-  onDownload?: (imageUrl: string) => void;
-}
+// Strava logo
+import stravaLogoWhite from "@/assets/api_logo_pwrdBy_strava_stack_white.svg";
 
 export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   activity,
@@ -33,22 +23,39 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
 }) => {
   const stageRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const logoImageRef = useRef<HTMLImageElement | null>(null);
+  const [dimensions, setDimensions] = useState({ width: 993, height: 1238 });
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
     null
   );
+  const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
+  const [checkerPattern, setCheckerPattern] =
+    useState<HTMLCanvasElement | null>(null);
 
-  // Colors from PRD
+  // User customizable options
+  const [selectedStats, setSelectedStats] = useState<string[]>([
+    "distance",
+    "pace",
+    "time",
+  ]);
+  const [invertColors, setInvertColors] = useState(false);
+
+  // Colors
   const BRAND_PINK = "#F99FD2";
   const BRAND_GREEN = "#165027";
+  const dataColor = invertColors ? BRAND_GREEN : BRAND_PINK;
+  const mapColor = invertColors ? BRAND_PINK : BRAND_GREEN;
 
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
         const container = containerRef.current;
-        const width = Math.min(container.clientWidth - 32, 800);
-        const height = Math.min(width * 0.75, 600);
+        // Use more compact proportions - adjust the height ratio
+        const maxWidth = Math.min(container.clientWidth - 32, 993);
+        const width = maxWidth;
+        // Reduce height ratio for more compact layout
+        const height = width * 1.0; // More square-like proportions instead of 1.25
         setDimensions({ width, height });
       }
     };
@@ -58,17 +65,51 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
     return () => window.removeEventListener("resize", updateDimensions);
   }, []);
 
+  // Load Strava logo
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      setLogoImage(img);
+    };
+    img.src = stravaLogoWhite;
+    logoImageRef.current = img;
+  }, []);
+
+  // Create checker pattern when dimensions change
+  useEffect(() => {
+    const pattern = createCheckerBackground(
+      dimensions.width,
+      dimensions.height
+    );
+    setCheckerPattern(pattern);
+  }, [dimensions]);
+
   // Helper functions for formatting
   const formatDistance = (meters: number) => `${(meters / 1000).toFixed(1)} km`;
+
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
+
   const formatPace = (distanceMeters: number, timeSeconds: number) => {
+    // Calculate pace as min/km (more common for running)
+    const minutes = timeSeconds / 60;
+    const km = distanceMeters / 1000;
+    const paceMinPerKm = minutes / km;
+    const paceMin = Math.floor(paceMinPerKm);
+    const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
+    return `${paceMin}:${paceSec.toString().padStart(2, "0")}/km`;
+  };
+
+  const formatSpeed = (distanceMeters: number, timeSeconds: number) => {
     const kmh = distanceMeters / 1000 / (timeSeconds / 3600);
     return `${kmh.toFixed(1)} km/h`;
   };
+
+  const formatElevation = (meters: number) => `${meters}m`;
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -78,7 +119,41 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
     });
   };
 
-  // Process polyline data for map visualization
+  // Available stats for selection
+  const availableStats = {
+    distance: {
+      label: "DISTANCE",
+      value: formatDistance(activity.distance),
+      shortLabel: "DISTANCE",
+    },
+    pace: {
+      label: "PACE",
+      value: formatPace(activity.distance, activity.moving_time),
+      shortLabel: "PACE",
+    },
+    time: {
+      label: "TIME",
+      value: formatTime(activity.moving_time),
+      shortLabel: "TIME",
+    },
+    speed: {
+      label: "AVG SPEED",
+      value: formatSpeed(activity.distance, activity.moving_time),
+      shortLabel: "AVG SPEED",
+    },
+    elevation: {
+      label: "ELEVATION GAIN",
+      value: formatElevation(activity.total_elevation_gain),
+      shortLabel: "ELEVATION GAIN",
+    },
+    date: {
+      label: "DATE",
+      value: formatDate(activity.start_date),
+      shortLabel: "DATE",
+    },
+  };
+
+  // Process polyline data for map visualization with proper constraints
   const processPolyline = () => {
     const polyline = activity.map?.polyline || activity.map?.summary_polyline;
     if (!polyline) return [];
@@ -95,15 +170,45 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       const minLng = Math.min(...lngs);
       const maxLng = Math.max(...lngs);
 
-      // Map to canvas coordinates (leave space for stats)
-      const mapWidth = dimensions.width - 100;
-      const mapHeight = dimensions.height - 200;
-      const mapX = 50;
-      const mapY = 100;
+      // Define layout areas - more compact proportions
+      const dataAreaHeight = dimensions.height * 0.4; // 40% for data
+      const mapAreaHeight = dimensions.height * 0.5; // 50% for map
+
+      const mapPadding = dimensions.width * 0.08; // 8% padding
+      const mapAreaX = mapPadding;
+      const mapAreaY = dataAreaHeight;
+      const mapAreaWidth = dimensions.width - mapPadding * 2;
+
+      // Calculate the scale to fit the route in the map area while maintaining aspect ratio
+      const latRange = maxLat - minLat;
+      const lngRange = maxLng - minLng;
+
+      // Add some padding around the route (10% of each dimension)
+      const latPadding = latRange * 0.1;
+      const lngPadding = lngRange * 0.1;
+
+      const paddedLatRange = latRange + latPadding * 2;
+      const paddedLngRange = lngRange + lngPadding * 2;
+
+      // Calculate scale factors for both dimensions
+      const scaleX = mapAreaWidth / paddedLngRange;
+      const scaleY = mapAreaHeight / paddedLatRange;
+
+      // Use the smaller scale to ensure the entire route fits
+      const routeScale = Math.min(scaleX, scaleY);
+
+      // Calculate the actual map dimensions and centering offset
+      const mapWidth = paddedLngRange * routeScale;
+      const mapHeight = paddedLatRange * routeScale;
+
+      const offsetX = mapAreaX + (mapAreaWidth - mapWidth) / 2;
+      const offsetY = mapAreaY + (mapAreaHeight - mapHeight) / 2;
 
       return coordinates.map(([lat, lng]) => {
-        const x = mapX + ((lng - minLng) / (maxLng - minLng)) * mapWidth;
-        const y = mapY + ((maxLat - lat) / (maxLat - minLat)) * mapHeight;
+        const x =
+          offsetX + ((lng - (minLng - lngPadding)) / paddedLngRange) * mapWidth;
+        const y =
+          offsetY + ((maxLat + latPadding - lat) / paddedLatRange) * mapHeight;
         return { x, y };
       });
     } catch (error) {
@@ -114,18 +219,82 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
 
   const pathPoints = processPolyline();
 
+  // Helper function to get text width for centering
+  const getTextWidth = (
+    text: string,
+    fontSize: number,
+    fontWeight: string = "normal"
+  ) => {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.font = `${fontWeight} ${fontSize}px 'Funnel Display', sans-serif`;
+      return context.measureText(text).width;
+    }
+    return 0;
+  };
+
+  // Generate checkered background pattern for the entire canvas
+  const createCheckerBackground = (width: number, height: number) => {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    const squareSize = 20;
+
+    // Make sure we have exact dimensions
+    canvas.width = Math.ceil(width);
+    canvas.height = Math.ceil(height);
+
+    if (context) {
+      // Fill the entire canvas with base color first
+      context.fillStyle = "#f0f0f0";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Add checker pattern
+      for (let x = 0; x < canvas.width; x += squareSize) {
+        for (let y = 0; y < canvas.height; y += squareSize) {
+          const isEven =
+            (Math.floor(x / squareSize) + Math.floor(y / squareSize)) % 2 === 0;
+          if (!isEven) {
+            context.fillStyle = "#ffffff";
+            // Make sure to fill to the edge
+            const rectWidth = Math.min(squareSize, canvas.width - x);
+            const rectHeight = Math.min(squareSize, canvas.height - y);
+            context.fillRect(x, y, rectWidth, rectHeight);
+          }
+        }
+      }
+    }
+
+    return canvas;
+  };
+
   // Generate image for download/sharing
   const generateImage = async () => {
     if (!stageRef.current) return null;
 
     setIsGenerating(true);
     try {
-      // Get the stage as a data URL
+      // Temporarily hide checker pattern background for download
+      const layer = stageRef.current.findOne("Layer");
+      const backgroundImage = layer.findOne("#checkerBackground");
+      const backgroundRect = layer.findOne("#backgroundRect");
+
+      if (backgroundImage) backgroundImage.visible(false);
+      if (backgroundRect) backgroundRect.visible(false);
+
+      layer.draw();
+
+      // Get the stage as a data URL with transparent background
       const dataURL = stageRef.current.toDataURL({
         mimeType: "image/png",
         quality: 1,
         pixelRatio: 2, // High DPI
       });
+
+      // Restore background for preview
+      if (backgroundImage) backgroundImage.visible(true);
+      if (backgroundRect) backgroundRect.visible(true);
+      layer.draw();
 
       setGeneratedImageUrl(dataURL);
       return dataURL;
@@ -189,238 +358,207 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Controls */}
+        <div className="mb-4 space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              Select 3 stats to display:
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(availableStats).map(([key, stat]) => (
+                <label
+                  key={key}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedStats.includes(key)}
+                    onChange={(e) => {
+                      if (e.target.checked && selectedStats.length < 3) {
+                        setSelectedStats([...selectedStats, key]);
+                      } else if (!e.target.checked) {
+                        setSelectedStats(
+                          selectedStats.filter((s) => s !== key)
+                        );
+                      }
+                    }}
+                    disabled={
+                      !selectedStats.includes(key) && selectedStats.length >= 3
+                    }
+                    className="rounded"
+                  />
+                  <span className="text-sm">{stat.shortLabel}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={invertColors}
+                onChange={(e) => setInvertColors(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-sm">
+                Inverse colors (Green data, Pink map)
+              </span>
+            </label>
+          </div>
+        </div>
+
         <div ref={containerRef} className="w-full">
-          <div className="border rounded-lg overflow-hidden bg-white">
+          <div className="border rounded-lg overflow-hidden">
             <Stage
               width={dimensions.width}
               height={dimensions.height}
               ref={stageRef}
             >
               <Layer>
-                {/* Background */}
+                {/* Checkered Background for preview */}
+                {checkerPattern && (
+                  <KonvaImage
+                    id="checkerBackground"
+                    image={checkerPattern}
+                    x={0}
+                    y={0}
+                    width={dimensions.width}
+                    height={dimensions.height}
+                    perfectDrawEnabled={false}
+                    listening={false}
+                  />
+                )}
+
+                {/* Transparent background rectangle for download */}
                 <Rect
+                  id="backgroundRect"
                   x={0}
                   y={0}
                   width={dimensions.width}
                   height={dimensions.height}
-                  fill="white"
+                  fill="transparent"
+                  visible={false}
                 />
 
-                {/* Title */}
-                <Text
-                  x={dimensions.width / 2}
-                  y={20}
-                  text={activity.name}
-                  fontSize={24}
-                  fontFamily="Arial, sans-serif"
-                  fontStyle="bold"
-                  fill={BRAND_GREEN}
-                  width={dimensions.width - 40}
-                  align="center"
-                />
+                {/* Stats Panel - 3 stats vertically at top, centered */}
+                <Group>
+                  {selectedStats.slice(0, 3).map((statKey, index) => {
+                    const stat =
+                      availableStats[statKey as keyof typeof availableStats];
+
+                    // Use proportional spacing based on data area
+                    const dataAreaHeight = dimensions.height * 0.4;
+                    const availableSpace = dataAreaHeight - 60; // Leave some padding
+                    const spacing = availableSpace / 3; // Divide equally among 3 stats
+                    const startY = 60; // Top padding
+                    const statY = startY + index * spacing;
+
+                    // Responsive font sizes based on canvas size
+                    const labelSize = Math.max(14, dimensions.width * 0.02);
+                    const valueSize = Math.max(28, dimensions.width * 0.048);
+
+                    const labelWidth = getTextWidth(
+                      stat.label,
+                      labelSize,
+                      "500"
+                    );
+                    const valueWidth = getTextWidth(
+                      stat.value,
+                      valueSize,
+                      "bold"
+                    );
+
+                    return (
+                      <Group key={statKey}>
+                        {/* Stat Label - light font, centered */}
+                        <Text
+                          x={dimensions.width / 2 - labelWidth / 2}
+                          y={statY}
+                          text={stat.label}
+                          fontSize={labelSize}
+                          fontFamily="'Funnel Display', sans-serif"
+                          fontStyle="400"
+                          fill={mapColor}
+                        />
+                        {/* Stat Value - bold font, centered */}
+                        <Text
+                          x={dimensions.width / 2 - valueWidth / 2}
+                          y={statY + labelSize + 4}
+                          text={stat.value}
+                          fontSize={valueSize}
+                          fontFamily="'Funnel Display', sans-serif"
+                          fontStyle="bold"
+                          fill={dataColor}
+                        />
+                      </Group>
+                    );
+                  })}
+                </Group>
 
                 {/* Activity Type Badge */}
-                <Rect
+                {/* <Rect
                   x={dimensions.width / 2 - 40}
-                  y={55}
+                  y={dimensions.height - 90}
                   width={80}
                   height={25}
-                  fill={BRAND_PINK}
+                  fill={dataColor}
                   cornerRadius={12}
                 />
                 <Text
                   x={dimensions.width / 2}
-                  y={62}
+                  y={dimensions.height - 83}
                   text={activity.type.toUpperCase()}
                   fontSize={12}
                   fontFamily="Arial, sans-serif"
                   fontStyle="bold"
-                  fill={BRAND_GREEN}
+                  fill="white"
                   align="center"
-                />
+                /> */}
 
-                {/* Map Path */}
-                {pathPoints.length > 1 && (
-                  <>
-                    {/* Path line */}
-                    <Line
-                      points={pathPoints.flatMap((p) => [p.x, p.y])}
-                      stroke={BRAND_GREEN}
-                      strokeWidth={3}
-                      lineJoin="round"
-                      lineCap="round"
-                    />
+                {/* Map Path - just the line, no start/end points */}
+                {pathPoints.length > 1 &&
+                  (() => {
+                    // Use proportional stroke width based on canvas size
+                    const strokeWidth = Math.max(2, dimensions.width * 0.008);
 
-                    {/* Start point */}
-                    <Circle
-                      x={pathPoints[0].x}
-                      y={pathPoints[0].y}
-                      radius={6}
-                      fill={BRAND_PINK}
-                      stroke="white"
-                      strokeWidth={2}
-                    />
+                    return (
+                      <Line
+                        points={pathPoints.flatMap((p) => [p.x, p.y])}
+                        stroke={mapColor}
+                        strokeWidth={strokeWidth}
+                        lineJoin="round"
+                        lineCap="round"
+                      />
+                    );
+                  })()}
 
-                    {/* End point */}
-                    <Circle
-                      x={pathPoints[pathPoints.length - 1].x}
-                      y={pathPoints[pathPoints.length - 1].y}
-                      radius={6}
-                      fill={BRAND_GREEN}
-                      stroke="white"
-                      strokeWidth={2}
-                    />
-                  </>
-                )}
+                {/* Powered by Strava logo at bottom, centered */}
+                {logoImage &&
+                  (() => {
+                    // Use proportional sizing for logo
+                    const logoAreaHeight = dimensions.height * 0.1;
+                    const logoWidth = Math.min(dimensions.width * 0.2, 90);
+                    const logoHeight = logoWidth * (30 / 88); // Maintain aspect ratio
+                    const logoY =
+                      dimensions.height - logoAreaHeight / 2 - logoHeight / 2; // Center in logo area
 
-                {/* Stats Panel */}
-                <Group>
-                  {/* Stats Background */}
-                  <Rect
-                    x={20}
-                    y={dimensions.height - 150}
-                    width={dimensions.width - 40}
-                    height={120}
-                    fill={BRAND_PINK}
-                    opacity={0.1}
-                    cornerRadius={8}
-                  />
-
-                  {/* Distance */}
-                  <Text
-                    x={40}
-                    y={dimensions.height - 130}
-                    text="DISTANCE"
-                    fontSize={12}
-                    fontFamily="Arial, sans-serif"
-                    fill={BRAND_GREEN}
-                    opacity={0.8}
-                  />
-                  <Text
-                    x={40}
-                    y={dimensions.height - 110}
-                    text={formatDistance(activity.distance)}
-                    fontSize={20}
-                    fontFamily="Arial, sans-serif"
-                    fontStyle="bold"
-                    fill={BRAND_GREEN}
-                  />
-
-                  {/* Time */}
-                  <Text
-                    x={dimensions.width / 2 - 60}
-                    y={dimensions.height - 130}
-                    text="TIME"
-                    fontSize={12}
-                    fontFamily="Arial, sans-serif"
-                    fill={BRAND_GREEN}
-                    opacity={0.8}
-                  />
-                  <Text
-                    x={dimensions.width / 2 - 60}
-                    y={dimensions.height - 110}
-                    text={formatTime(activity.moving_time)}
-                    fontSize={20}
-                    fontFamily="Arial, sans-serif"
-                    fontStyle="bold"
-                    fill={BRAND_GREEN}
-                  />
-
-                  {/* Pace */}
-                  <Text
-                    x={dimensions.width - 120}
-                    y={dimensions.height - 130}
-                    text="AVG SPEED"
-                    fontSize={12}
-                    fontFamily="Arial, sans-serif"
-                    fill={BRAND_GREEN}
-                    opacity={0.8}
-                  />
-                  <Text
-                    x={dimensions.width - 120}
-                    y={dimensions.height - 110}
-                    text={formatPace(activity.distance, activity.moving_time)}
-                    fontSize={20}
-                    fontFamily="Arial, sans-serif"
-                    fontStyle="bold"
-                    fill={BRAND_GREEN}
-                  />
-
-                  {/* Elevation */}
-                  <Text
-                    x={40}
-                    y={dimensions.height - 80}
-                    text="ELEVATION GAIN"
-                    fontSize={12}
-                    fontFamily="Arial, sans-serif"
-                    fill={BRAND_GREEN}
-                    opacity={0.8}
-                  />
-                  <Text
-                    x={40}
-                    y={dimensions.height - 60}
-                    text={`${activity.total_elevation_gain}m`}
-                    fontSize={20}
-                    fontFamily="Arial, sans-serif"
-                    fontStyle="bold"
-                    fill={BRAND_GREEN}
-                  />
-
-                  {/* Date */}
-                  <Text
-                    x={dimensions.width - 120}
-                    y={dimensions.height - 80}
-                    text="DATE"
-                    fontSize={12}
-                    fontFamily="Arial, sans-serif"
-                    fill={BRAND_GREEN}
-                    opacity={0.8}
-                  />
-                  <Text
-                    x={dimensions.width - 120}
-                    y={dimensions.height - 60}
-                    text={formatDate(activity.start_date)}
-                    fontSize={16}
-                    fontFamily="Arial, sans-serif"
-                    fontStyle="bold"
-                    fill={BRAND_GREEN}
-                  />
-                </Group>
-
-                {/* Brand Colors Indicator */}
-                <Group>
-                  <Circle
-                    x={dimensions.width - 60}
-                    y={30}
-                    radius={8}
-                    fill={BRAND_PINK}
-                  />
-                  <Circle
-                    x={dimensions.width - 30}
-                    y={30}
-                    radius={8}
-                    fill={BRAND_GREEN}
-                  />
-                </Group>
+                    return (
+                      <KonvaImage
+                        image={logoImage}
+                        x={dimensions.width / 2 - logoWidth / 2}
+                        y={logoY}
+                        width={logoWidth}
+                        height={logoHeight}
+                      />
+                    );
+                  })()}
               </Layer>
             </Stage>
           </div>
 
           {/* Info below visualization */}
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>
-              Visualization created with
-              <span className="text-brand-pink font-medium">
-                {" "}
-                pink (#F99FD2){" "}
-              </span>
-              and
-              <span className="text-brand-green font-medium">
-                {" "}
-                green (#165027){" "}
-              </span>
-              theme
-            </p>
             {pathPoints.length === 0 && (
               <p className="mt-2 text-orange-600">
                 ⚠️ No GPS data available for this activity - showing stats only

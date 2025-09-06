@@ -1,12 +1,5 @@
 import { useState } from "react";
-
-interface StravaActivity {
-  id: number;
-  name: string;
-  distance: number;
-  moving_time: number;
-  type: string;
-}
+import type { StravaActivity } from "@/types/strava";
 
 export const useSharing = () => {
   const [isSharing, setIsSharing] = useState(false);

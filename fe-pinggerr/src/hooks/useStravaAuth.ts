@@ -1,37 +1,14 @@
 import { useState, useEffect } from "react";
 import { config } from "@/config/env";
-
-interface StravaTokens {
-  access_token: string;
-  refresh_token: string;
-  expires_at: number;
-  expires_in: number;
-}
-
-interface StravaActivity {
-  id: number;
-  name: string;
-  distance: number;
-  moving_time: number;
-  elapsed_time: number;
-  total_elevation_gain: number;
-  type: string;
-  start_date: string;
-  average_speed: number;
-  max_speed: number;
-  map?: {
-    polyline?: string;
-    summary_polyline?: string;
-  };
-}
+import type { StravaTokens, StravaActivity } from "@/types/strava";
 
 export const useStravaAuth = () => {
   const [tokens, setTokens] = useState<StravaTokens | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Check for stored tokens on mount
-  useEffect(() => {
+  // Function to load tokens from localStorage
+  const loadTokensFromStorage = () => {
     const storedTokens = localStorage.getItem("strava_tokens");
     if (storedTokens) {
       try {
@@ -43,15 +20,44 @@ export const useStravaAuth = () => {
 
         if (currentTime < expirationTime - bufferTime) {
           setTokens(parsed);
+          return true;
         } else {
           // Token expired, try to refresh
           refreshToken(parsed.refresh_token);
+          return false;
         }
       } catch (err) {
         console.error("Error parsing stored tokens:", err);
         localStorage.removeItem("strava_tokens");
+        return false;
       }
     }
+    return false;
+  };
+
+  // Check for stored tokens on mount and when localStorage changes
+  useEffect(() => {
+    loadTokensFromStorage();
+
+    // Listen for storage changes (when tokens are stored in other tabs/components)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "strava_tokens") {
+        loadTokensFromStorage();
+      }
+    };
+
+    // Listen for custom auth success event
+    const handleAuthSuccess = () => {
+      loadTokensFromStorage();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("strava-auth-success", handleAuthSuccess);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("strava-auth-success", handleAuthSuccess);
+    };
   }, []);
 
   // Start OAuth flow
@@ -67,6 +73,8 @@ export const useStravaAuth = () => {
     authUrl.searchParams.append("response_type", "code");
     authUrl.searchParams.append("scope", config.strava.scope);
     authUrl.searchParams.append("approval_prompt", "force");
+
+    console.log("Redirecting to Strava for authentication...");
 
     window.location.href = authUrl.toString();
   };
@@ -93,10 +101,18 @@ export const useStravaAuth = () => {
       const tokenData: StravaTokens = await response.json();
       setTokens(tokenData);
       localStorage.setItem("strava_tokens", JSON.stringify(tokenData));
+
+      // Trigger a custom event to notify other components
+      window.dispatchEvent(new CustomEvent("strava-auth-success"));
+      console.log("Authentication successful");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      console.error("Token exchange error details:", {
+        error: err,
+        message: errorMessage,
+        type: typeof err,
+      });
       setError(errorMessage);
-      console.error("Token exchange error:", err);
     } finally {
       setIsLoading(false);
     }

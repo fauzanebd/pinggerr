@@ -19,23 +19,10 @@ import { AuthCallback } from "@/components/AuthCallback";
 import { ActivityList } from "@/components/ActivityList";
 import { ActivityVisualization } from "@/components/ActivityVisualization";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
+import type { StravaActivity } from "@/types/strava";
 
-interface StravaActivity {
-  id: number;
-  name: string;
-  distance: number;
-  moving_time: number;
-  elapsed_time: number;
-  total_elevation_gain: number;
-  type: string;
-  start_date: string;
-  average_speed: number;
-  max_speed: number;
-  map?: {
-    polyline?: string;
-    summary_polyline?: string;
-  };
-}
+// Import Connect with Strava SVG
+import StravaConnectButton from "@/assets/btn_strava_connect_with_orange_x2.svg";
 
 function MainApp() {
   const { isAuthenticated, login, logout, error } = useStravaAuth();
@@ -113,13 +100,16 @@ function MainApp() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <Button
+                <button
                   onClick={login}
-                  className="bg-brand-pink hover:bg-brand-pink/90 text-brand-green font-semibold px-8 py-3"
-                  size="lg"
+                  className="transition-transform hover:scale-105 active:scale-95"
                 >
-                  Connect with Strava
-                </Button>
+                  <img
+                    src={StravaConnectButton}
+                    alt="Connect with Strava"
+                    className="h-12 w-auto mx-auto"
+                  />
+                </button>
               </CardContent>
             </Card>
           ) : (
@@ -175,21 +165,25 @@ function MainApp() {
 
         {/* Footer */}
         <div className="text-center mt-16 text-muted-foreground">
-          <p>Built with React, TypeScript, and Shadcn UI</p>
-          <div className="flex justify-center gap-2 mt-2">
-            <Badge
-              variant="outline"
-              className="border-brand-pink text-brand-pink"
+          <a
+            href="https://github.com/fauzanebd/pinggerr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-brand-green hover:text-brand-pink font-medium transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width={18}
+              height={18}
+              fill="currentColor"
+              viewBox="0 0 24 24"
+              className="inline-block"
+              aria-hidden="true"
             >
-              Pink: #F99FD2
-            </Badge>
-            <Badge
-              variant="outline"
-              className="border-brand-green text-brand-green"
-            >
-              Green: #165027
-            </Badge>
-          </div>
+              <path d="M12 0C5.37 0 0 5.373 0 12c0 5.303 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.76-1.606-2.665-.304-5.466-1.334-5.466-5.931 0-1.31.468-2.381 1.235-3.221-.124-.303-.535-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.52 11.52 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.404 2.291-1.553 3.297-1.23 3.297-1.23.653 1.653.242 2.873.119 3.176.77.84 1.234 1.911 1.234 3.221 0 4.609-2.804 5.625-5.475 5.921.43.372.813 1.104.813 2.226 0 1.606-.015 2.898-.015 3.293 0 .321.218.694.825.576C20.565 21.796 24 17.299 24 12c0-6.627-5.373-12-12-12z" />
+            </svg>
+            github
+          </a>
         </div>
       </div>
     </div>

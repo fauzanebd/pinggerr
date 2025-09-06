@@ -1,10 +1,12 @@
 const getRedirectUri = () => {
   // For local development, always use localhost
   if (window.location.hostname === "localhost") {
+    console.log("Local development");
     return `${window.location.origin}/auth/callback`;
   }
 
   // For production, use the environment variable or fallback to current origin
+  console.log("Production");
   return (
     import.meta.env.VITE_STRAVA_REDIRECT_URI ||
     `${window.location.origin}/auth/callback`
