@@ -19,6 +19,7 @@ import { AuthCallback } from "@/components/AuthCallback";
 import { ActivityList } from "@/components/ActivityList";
 import { ActivityVisualization } from "@/components/ActivityVisualization";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
+import { processTcxFromFile } from "@/lib/tcxParser";
 import type { StravaActivity } from "@/types/strava";
 
 // Import Connect with Strava SVG
@@ -29,6 +30,11 @@ function MainApp() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] =
     useState<StravaActivity | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isProcessingTcx, setIsProcessingTcx] = useState<boolean>(false);
+  const [tcxError, setTcxError] = useState<string | null>(null);
+  const [showInstructions, setShowInstructions] = useState<boolean>(false);
+  const [language, setLanguage] = useState<"en" | "id">("en");
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -51,6 +57,37 @@ function MainApp() {
 
   const handleBackToList = () => {
     setSelectedActivity(null);
+    setSelectedFile(null);
+    setTcxError(null);
+    setShowInstructions(false);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setTcxError(null);
+    }
+  };
+
+  const handleProcessTcx = async () => {
+    if (!selectedFile) return;
+    console.log("Processing TCX file:", selectedFile);
+
+    setIsProcessingTcx(true);
+    setTcxError(null);
+
+    try {
+      const stravaActivity = await processTcxFromFile(selectedFile);
+      console.log("Processed TCX file:", stravaActivity);
+      setSelectedActivity(stravaActivity);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to process activity";
+      setTcxError(errorMessage);
+    } finally {
+      setIsProcessingTcx(false);
+    }
   };
 
   if (isCallbackRoute) {
@@ -64,13 +101,27 @@ function MainApp() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
+          <div className="flex justify-end mb-4">
+            <Button
+              onClick={() => setLanguage(language === "en" ? "id" : "en")}
+              variant="outline"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              {language === "en" ? "🇺🇸 EN (English)" : "🇮🇩 ID (Indonesia)"}
+            </Button>
+          </div>
           <h1 className="text-4xl font-bold text-foreground mb-4">
             {/* <span className="text-brand-pink">Strava</span>{" "}
             <span className="text-brand-green">Activity</span> Visualizer */}
-            Strava Activity Visualizer
+            {language === "en"
+              ? "Strava Activity Visualizer"
+              : "Visualisasi Aktivitas Strava"}
           </h1>
           <p className="text-muted-foreground text-lg">
-            Create beautiful, shareable graphics of your Strava activities
+            {language === "en"
+              ? "Create beautiful, shareable graphics of your Strava activities"
+              : "Buat grafik aktivitas Strava yang indah dan dapat dibagikan"}
           </p>
         </div>
 
@@ -87,18 +138,92 @@ function MainApp() {
 
         {/* Main Content */}
         <div className="max-w-2xl mx-auto">
-          {!isAuthenticated ? (
+          {selectedActivity ? (
+            // Show visualization for any selected activity (authenticated or TCX upload)
+            <div className="space-y-6">
+              {/* Back button */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      {isAuthenticated
+                        ? language === "en"
+                          ? "Connected to Strava"
+                          : "Terhubung ke Strava"
+                        : language === "en"
+                        ? "TCX File Processed"
+                        : "File TCX Diproses"}
+                      <Badge className="bg-brand-green text-white">
+                        {isAuthenticated
+                          ? language === "en"
+                            ? "Active"
+                            : "Aktif"
+                          : language === "en"
+                          ? "Local"
+                          : "Lokal"}
+                      </Badge>
+                    </div>
+                    <Button
+                      onClick={handleBackToList}
+                      variant="outline"
+                      size="sm"
+                      className="text-muted-foreground hover:text-foreground self-start sm:self-auto"
+                    >
+                      ←{" "}
+                      {isAuthenticated
+                        ? language === "en"
+                          ? "Back to activities"
+                          : "Kembali ke aktivitas"
+                        : language === "en"
+                        ? "Back to home"
+                        : "Kembali ke beranda"}
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+
+              {/* Show data source if not from API */}
+              {!isAuthenticated && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="text-center">
+                      <p className="text-blue-800 text-sm">
+                        <strong>
+                          📊{" "}
+                          {language === "en" ? "Data Source:" : "Sumber Data:"}
+                        </strong>{" "}
+                        {language === "en"
+                          ? "Activity data loaded from TCX export"
+                          : "Data aktivitas dimuat dari ekspor TCX"}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <ActivityVisualization
+                activity={selectedActivity}
+                language={language}
+                onDownload={(imageUrl) => {
+                  console.log("Image downloaded:", imageUrl);
+                }}
+              />
+            </div>
+          ) : !isAuthenticated ? (
             <Card>
               <CardHeader className="text-center">
                 <CardTitle className="flex items-center justify-center gap-2">
-                  Connect Your Strava Account
+                  {language === "en"
+                    ? "Connect Your Strava Account"
+                    : "Hubungkan Akun Strava Anda"}
                 </CardTitle>
                 <CardDescription>
-                  Connect your Strava account to generate beautiful
-                  visualizations of your recent activities
+                  {language === "en"
+                    ? "Connect your Strava account to generate beautiful visualizations of your recent activities"
+                    : "Hubungkan akun Strava Anda untuk membuat visualisasi yang indah dari aktivitas terbaru Anda"}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="text-center">
+              <CardContent className="text-center text-leftspace-y-4">
                 <button
                   onClick={login}
                   className="transition-transform hover:scale-105 active:scale-95"
@@ -109,6 +234,287 @@ function MainApp() {
                     className="h-12 w-auto mx-auto"
                   />
                 </button>
+
+                {/* TCX File Upload Option */}
+                <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <p className="text-sm text-orange-800 leading-relaxed mb-3">
+                    <strong>
+                      🚀{" "}
+                      {language === "en"
+                        ? "Alternative Option (No Login to Strava):"
+                        : "Opsi Alternatif (Tanpa Login ke Strava):"}
+                    </strong>{" "}
+                    {language === "en"
+                      ? "Strava has not approved my app for a bigger limit for public API yet, but you can still create beautiful visualizations! Download your activity's TCX file from Strava and upload it here."
+                      : "Strava belum menyetujui aplikasi saya untuk batas API publik yang lebih besar, tetapi Anda masih dapat membuat visualisasi yang indah! Unduh file TCX aktivitas Anda dari Strava dan unggah di sini."}
+                  </p>
+
+                  {/* What is TCX explanation */}
+                  <div className="text-left mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-800 leading-relaxed">
+                      <strong>
+                        🔒{" "}
+                        {language === "en"
+                          ? "Privacy First:"
+                          : "Privasi Utama:"}
+                      </strong>{" "}
+                      {language === "en"
+                        ? "TCX files contain your activity data (GPS, heart rate, etc.) and are processed completely locally in your browser. Your data never leaves your device - no uploads to servers!"
+                        : "File TCX berisi data aktivitas Anda (GPS, detak jantung, dll.) dan diproses sepenuhnya secara lokal di browser Anda. Data Anda tidak pernah meninggalkan perangkat - tidak ada unggahan ke server!"}
+                    </p>
+                    <p className="text-xs text-blue-700 mt-1">
+                      <strong>
+                        {language === "en" ? "What's TCX?" : "Apa itu TCX?"}
+                      </strong>{" "}
+                      {language === "en"
+                        ? "Training Center XML - Strava's export format containing all your workout details like route, pace, elevation, and heart rate data."
+                        : "Training Center XML - format ekspor Strava yang berisi semua detail latihan seperti rute, kecepatan, elevasi, dan data detak jantung."}
+                    </p>
+                  </div>
+
+                  {/* Instructions Button */}
+                  <div className="mb-3">
+                    <Button
+                      onClick={() => setShowInstructions(!showInstructions)}
+                      variant="outline"
+                      size="sm"
+                      className="text-orange-700 border-orange-300 hover:bg-orange-100"
+                    >
+                      📋{" "}
+                      {language === "en"
+                        ? `${
+                            showInstructions ? "Hide" : "Show"
+                          } Instructions for Downloading TCX File`
+                        : `${
+                            showInstructions ? "Sembunyikan" : "Tampilkan"
+                          } Instruksi Untuk Mengunduh File TCX`}
+                    </Button>
+                  </div>
+
+                  {/* File Upload */}
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="file"
+                        accept=".tcx"
+                        onChange={handleFileSelect}
+                        className="flex-1 px-3 py-2 border border-orange-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent"
+                        disabled={isProcessingTcx}
+                      />
+                      <Button
+                        onClick={handleProcessTcx}
+                        disabled={!selectedFile || isProcessingTcx}
+                        className="bg-brand-green hover:bg-brand-pink/90 text-white text-sm px-4 py-2"
+                      >
+                        {isProcessingTcx
+                          ? language === "en"
+                            ? "Processing..."
+                            : "Memproses..."
+                          : language === "en"
+                          ? "Create Graphic"
+                          : "Buat Grafik"}
+                      </Button>
+                    </div>
+
+                    {selectedFile && (
+                      <div className="text-sm text-orange-700">
+                        📁 {language === "en" ? "Selected:" : "Terpilih:"}{" "}
+                        {selectedFile.name} (
+                        {(selectedFile.size / 1024 / 1024).toFixed(1)} MB)
+                      </div>
+                    )}
+
+                    {tcxError && (
+                      <div className="text-red-600 text-xs bg-red-50 p-2 rounded border border-red-200">
+                        {tcxError}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                {showInstructions && (
+                  <div className="text-left mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 className="font-medium text-blue-900 mb-3">
+                      📱{" "}
+                      {language === "en"
+                        ? "How to Download TCX File"
+                        : "Cara Download File TCX"}
+                    </h3>
+
+                    <div className="text-sm text-blue-700 space-y-2">
+                      {language === "en" ? (
+                        // English Instructions
+                        <>
+                          <div>
+                            <strong>Desktop:</strong>
+                            <ol className="list-decimal list-inside ml-4 mt-1 space-y-1">
+                              <li>Log in to Strava on your browser</li>
+                              <li>
+                                Open your activity page (e.g.,{" "}
+                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                  https://www.strava.com/activities/12345678901
+                                </code>
+                                )
+                              </li>
+                              <li>
+                                Add{" "}
+                                <code className="bg-blue-100 px-1 rounded">
+                                  /export_tcx
+                                </code>{" "}
+                                to the end of the URL
+                              </li>
+                              <li>
+                                Final URL:{" "}
+                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                  https://www.strava.com/activities/12345678901/export_tcx
+                                </code>
+                              </li>
+                              <li>TCX file will download automatically</li>
+                            </ol>
+                          </div>
+                          <div>
+                            <strong>Mobile:</strong>
+                            <ol className="list-decimal list-inside ml-4 mt-1 space-y-1">
+                              <li>Share your activity and copy the link</li>
+                              <li>
+                                Shared link looks like:{" "}
+                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                  https://strava.app.link/abc123xyz
+                                </code>
+                              </li>
+                              <li>
+                                Open the link in browser and log in to Strava
+                              </li>
+                              <li>
+                                Clean the URL (remove everything after the
+                                activity ID):{" "}
+                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                  https://www.strava.com/activities/98765432109
+                                </code>
+                              </li>
+                              <li>
+                                Add{" "}
+                                <code className="bg-blue-100 px-1 rounded">
+                                  /export_tcx
+                                </code>{" "}
+                                to the end
+                              </li>
+                              <li>
+                                Final URL:{" "}
+                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                  https://www.strava.com/activities/98765432109/export_tcx
+                                </code>
+                              </li>
+                              <li>TCX file will be downloaded</li>
+                            </ol>
+                          </div>
+                        </>
+                      ) : (
+                        // Indonesian Instructions
+                        <>
+                          <div>
+                            <strong>Desktop:</strong>
+                            <ol className="list-decimal list-inside ml-4 mt-1 space-y-1">
+                              <li>Login ke Strava di browser</li>
+                              <li>
+                                Buka halaman aktivitas Anda (contoh:{" "}
+                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                  https://www.strava.com/activities/12345678901
+                                </code>
+                                )
+                              </li>
+                              <li>
+                                Tambahkan{" "}
+                                <code className="bg-blue-100 px-1 rounded">
+                                  /export_tcx
+                                </code>{" "}
+                                di akhir URL
+                              </li>
+                              <li>
+                                URL final:{" "}
+                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                  https://www.strava.com/activities/12345678901/export_tcx
+                                </code>
+                              </li>
+                              <li>File TCX akan otomatis terdownload</li>
+                            </ol>
+                          </div>
+                          <div>
+                            <strong>Mobile:</strong>
+                            <ol className="list-decimal list-inside ml-4 mt-1 space-y-1">
+                              <li>Share aktivitas dan copy linknya</li>
+                              <li>
+                                Link share seperti:{" "}
+                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                  https://strava.app.link/def456uvw
+                                </code>
+                              </li>
+                              <li>
+                                Buka link di browser dan login ke Strava di
+                                browser
+                              </li>
+                              <li>
+                                Bersihkan URL (hapus semua setelah ID
+                                aktivitas):{" "}
+                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                  https://www.strava.com/activities/98765432109
+                                </code>
+                              </li>
+                              <li>
+                                Tambahkan{" "}
+                                <code className="bg-blue-100 px-1 rounded">
+                                  /export_tcx
+                                </code>{" "}
+                                di akhir
+                              </li>
+                              <li>
+                                URL final:{" "}
+                                <code className="bg-blue-100 px-1 rounded text-xs">
+                                  https://www.strava.com/activities/98765432109/export_tcx
+                                </code>
+                              </li>
+                              <li>File TCX akan terdownload</li>
+                            </ol>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Test Example */}
+                    {/* <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800 mb-2">
+                        <strong>🧪 Want to test first?</strong> Try our example
+                        TCX file:
+                      </p>
+                      <a
+                        href="/example.tcx"
+                        download="example_running_activity.tcx"
+                        className="inline-block px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                      >
+                        📥 Download Example TCX
+                      </a>
+                    </div> */}
+
+                    {/* Screenshot Placeholders */}
+                    {/* <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                        <div className="text-gray-500">
+                          <div className="text-2xl mb-2">📱</div>
+                          <div className="text-sm">Screenshot Placeholder</div>
+                          <div className="text-xs">Mobile Instructions</div>
+                        </div>
+                      </div>
+                      <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                        <div className="text-gray-500">
+                          <div className="text-2xl mb-2">💻</div>
+                          <div className="text-sm">Screenshot Placeholder</div>
+                          <div className="text-xs">Desktop Instructions</div>
+                        </div>
+                      </div>
+                    </div> */}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -118,9 +524,11 @@ function MainApp() {
                 <CardHeader>
                   <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-2">
-                      Connected to Strava
+                      {language === "en"
+                        ? "Connected to Strava"
+                        : "Terhubung ke Strava"}
                       <Badge className="bg-brand-green text-white">
-                        Active
+                        {language === "en" ? "Active" : "Aktif"}
                       </Badge>
                     </div>
                     <Button
@@ -129,35 +537,14 @@ function MainApp() {
                       size="sm"
                       className="text-muted-foreground hover:text-foreground self-start sm:self-auto"
                     >
-                      Disconnect
+                      {language === "en" ? "Disconnect" : "Putuskan"}
                     </Button>
                   </CardTitle>
-                  {selectedActivity && (
-                    <CardDescription>
-                      <Button
-                        onClick={handleBackToList}
-                        variant="ghost"
-                        size="sm"
-                        className="text-brand-pink hover:text-brand-green p-0 h-auto"
-                      >
-                        ← Back to activities
-                      </Button>
-                    </CardDescription>
-                  )}
                 </CardHeader>
               </Card>
 
               {/* Activity Content */}
-              {!selectedActivity ? (
-                <ActivityList onSelectActivity={handleSelectActivity} />
-              ) : (
-                <ActivityVisualization
-                  activity={selectedActivity}
-                  onDownload={(imageUrl) => {
-                    console.log("Image downloaded:", imageUrl);
-                  }}
-                />
-              )}
+              <ActivityList onSelectActivity={handleSelectActivity} />
             </div>
           )}
         </div>
@@ -168,10 +555,14 @@ function MainApp() {
             <CardContent className="pt-4 pb-4">
               <div className="text-center">
                 <p className="text-blue-800 text-sm">
-                  <strong>Privacy Notice:</strong> Your Strava data is processed
-                  locally in your browser and is not stored on our servers. Only
-                  you can see your activity data - it remains completely private
-                  and secure.
+                  <strong>
+                    {language === "en"
+                      ? "Privacy Notice:"
+                      : "Pemberitahuan Privasi:"}
+                  </strong>{" "}
+                  {language === "en"
+                    ? "Your Strava data is processed locally in your browser and is not stored on our servers. Only you can see your activity data - it remains completely private and secure."
+                    : "Data Strava Anda diproses secara lokal di browser Anda dan tidak disimpan di server kami. Hanya Anda yang dapat melihat data aktivitas Anda - data tetap sepenuhnya pribadi dan aman."}
                 </p>
               </div>
             </CardContent>
@@ -180,7 +571,9 @@ function MainApp() {
 
         {/* Footer */}
         <div className="flex items-center justify-center gap-2 mt-4 text-muted-foreground">
-          <span>developed by</span>
+          <span>
+            {language === "en" ? "developed by" : "dikembangkan oleh"}
+          </span>
           <a
             href="https://instagram.com/fauzanebd"
             target="_blank"

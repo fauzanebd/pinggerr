@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Written by Strava -->
+<TrainingCenterDatabase xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd" xmlns:ns5="http://www.garmin.com/xmlschemas/ActivityGoals/v1" xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2" xmlns:ns2="http://www.garmin.com/xmlschemas/UserProfile/v2" xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+ <Activities>
+  <Activity Sport="Running">
+   <Id>2025-09-05T23:18:21Z</Id>
+   <Lap StartTime="2025-09-05T23:18:21Z">
+    <TotalTimeSeconds>375</TotalTimeSeconds>
+    <DistanceMeters>1000.0</DistanceMeters>
+    <MaximumSpeed>3.4</MaximumSpeed>
+    <Calories>0</Calories>
+    <AverageHeartRateBpm>
+     <Value>134</Value>
+    </AverageHeartRateBpm>
+    <MaximumHeartRateBpm>
+     <Value>144</Value>
+    </MaximumHeartRateBpm>
+    <Intensity>Active</Intensity>
+    <Cadence>83</Cadence>
+    <TriggerMethod>Manual</TriggerMethod>
+    <Track>
+     <Trackpoint>
+      <Time>2025-09-05T23:18:21Z</Time>
+      <Position>
+       <LatitudeDegrees>-6.3608410</LatitudeDegrees>
+       <LongitudeDegrees>106.8314670</LongitudeDegrees>
+      </Position>
+      <AltitudeMeters>78.8</AltitudeMeters>
+      <DistanceMeters>0.0</DistanceMeters>
+      <HeartRateBpm>
+       <Value>83</Value>
+      </HeartRateBpm>
+      <Extensions>
+       <TPX xmlns="http://www.garmin.com/xmlschemas/ActivityExtension/v2">
+        <Speed>0.0</Speed>
+        <Watts>0</Watts>
+        <RunCadence>0</RunCadence>
+       </TPX>
+      </Extensions>
+     </Trackpoint>
+     <Trackpoint>
+      <Time>2025-09-05T23:18:22Z</Time>
+      <Position>
+       <LatitudeDegrees>-6.3608450</LatitudeDegrees>
+       <LongitudeDegrees>106.8314680</LongitudeDegrees>
+      </Position>
+      <AltitudeMeters>78.8</AltitudeMeters>
+      <DistanceMeters>0.0</DistanceMeters>
+      <HeartRateBpm>
+       <Value>83</Value>
+      </HeartRateBpm>
+      <Extensions>
+       <TPX xmlns="http://www.garmin.com/xmlschemas/ActivityExtension/v2">
+        <Speed>0.0</Speed>
+        <Watts>0</Watts>
+        <RunCadence>0</RunCadence>
+       </TPX>
+      </Extensions>
+     </Trackpoint>
+     <Trackpoint>
+      <Time>2025-09-05T23:18:23Z</Time>
+      <Position>
+       <LatitudeDegrees>-6.3608450</LatitudeDegrees>
+       <LongitudeDegrees>106.8314710</LongitudeDegrees>
+      </Position>
+      <AltitudeMeters>78.8</AltitudeMeters>
+      <DistanceMeters>0.2</DistanceMeters>
+      <HeartRateBpm>
+       <Value>83</Value>
+      </HeartRateBpm>
+      <Extensions>
+       <TPX xmlns="http://www.garmin.com/xmlschemas/ActivityExtension/v2">
+        <Speed>0.1</Speed>
+        <Watts>0</Watts>
+        <RunCadence>0</RunCadence>
+       </TPX>
+      </Extensions>
+     </Trackpoint>
+     // and whole aanother trackpoint tag here
+    </Track>
+    </Lap>
+    <Lap>
+    // and then here, like previous lap, will be filled with a lot of track points tag
+    </Lap>
+    </Activity>
+    </Activities>
+    </TrainingCenterDatabase>

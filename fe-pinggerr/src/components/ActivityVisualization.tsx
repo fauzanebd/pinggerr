@@ -11,6 +11,7 @@ import stravaLogoWhite from "@/assets/api_logo_pwrdBy_strava_stack_white.svg";
 export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   activity,
   onDownload,
+  language,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const logoImageRef = useRef<HTMLImageElement | null>(null);
@@ -117,6 +118,8 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
 
   const formatHeartRate = (bpm: number) => `${Math.round(bpm)} BPM`;
 
+  const formatCadence = (rpm: number) => `${Math.round(rpm)} SPM`;
+
   // Available stats for selection
   const availableStats = {
     distance: {
@@ -155,6 +158,15 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
             label: "AVG HEART RATE",
             value: formatHeartRate(activity.average_heartrate),
             shortLabel: "AVG HR",
+          },
+        }
+      : {}),
+    ...(activity.average_cadence
+      ? {
+          cadence: {
+            label: "AVG CADENCE",
+            value: formatCadence(activity.average_cadence),
+            shortLabel: "AVG CADENCE",
           },
         }
       : {}),
@@ -420,7 +432,9 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-brand-pink">🎨</span>
-            Activity Visualization
+            {language === "en"
+              ? "Activity Visualization"
+              : "Visualisasi Aktivitas"}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -428,7 +442,13 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
               disabled={isGenerating}
               className="bg-brand-pink hover:bg-brand-pink/90 text-brand-green"
             >
-              {isGenerating ? "Generating..." : "💾 Download"}
+              {isGenerating
+                ? language === "en"
+                  ? "Generating..."
+                  : "Membuat..."
+                : language === "en"
+                ? "💾 Download"
+                : "💾 Unduh"}
             </Button>
           </div>
         </CardTitle>
@@ -446,7 +466,9 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
 
           <div>
             <label className="text-sm font-medium mb-2 block">
-              Maximum 3 stats can be selected. Deselect one to enable others.
+              {language === "en"
+                ? "Maximum 3 stats can be selected. Deselect one to enable others."
+                : "Maksimal 3 statistik dapat dipilih. Batalkan pilihan satu untuk mengaktifkan yang lain."}
             </label>
             <div className="flex flex-wrap gap-2">
               {Object.entries(availableStats).map(([key, stat]) => (
@@ -486,7 +508,9 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
                 className="rounded"
               />
               <span className="text-sm">
-                Inverse colors (Green data, Pink map)
+                {language === "en"
+                  ? "Inverse colors (Green data, Pink map)"
+                  : "Warna terbalik (Data hijau, Peta pink)"}
               </span>
             </label>
           </div>
@@ -499,7 +523,9 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-pink mx-auto mb-2"></div>
                   <p className="text-sm text-muted-foreground">
-                    Generating visualization...
+                    {language === "en"
+                      ? "Generating visualization..."
+                      : "Membuat visualisasi..."}
                   </p>
                 </div>
               </div>
@@ -515,7 +541,9 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
               />
             ) : (
               <div className="flex items-center justify-center min-h-[400px]">
-                <p className="text-sm text-muted-foreground">Loading...</p>
+                <p className="text-sm text-muted-foreground">
+                  {language === "en" ? "Loading..." : "Memuat..."}
+                </p>
               </div>
             )}
           </div>
@@ -524,7 +552,10 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
           <div className="mt-4 text-center text-sm text-muted-foreground">
             {pathPoints.length === 0 && (
               <p className="mt-2 text-orange-600">
-                ⚠️ No GPS data available for this activity - showing stats only
+                ⚠️{" "}
+                {language === "en"
+                  ? "No GPS data available for this activity - showing stats only"
+                  : "Tidak ada data GPS untuk aktivitas ini - hanya menampilkan statistik"}
               </p>
             )}
           </div>

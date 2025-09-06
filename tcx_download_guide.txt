@@ -1,0 +1,17 @@
+1. For Desktop: 
+a. pastikan anda telah masuk ke strava desktop
+b. buka aktivitas yang ingin anda buat grafisnya, copy link aktivitas tersebut, contoh: https://www.strava.com/activities/15711586121
+c. buka tab baru, tambahkan /export_tcx di akhir, jadi:
+ https://www.strava.com/activities/15711586121/export_tcx 
+d. file tcx akan terdownload, cek folder download, upload file tcx di sini
+
+2. For Mobile:
+1. Share Aktivitas
+2. Salin Tautan (biasanya akan berbentuk seperti ini: https://strava.app.link/hr04GB7zrWb )
+3. Buka aktivitas di browser (tunggu hinga tautan berubah menjadi seperti ini: https://www.strava.com/activities/15711586121?utm_source=ios_share&utm_medium=social&share_sig=4FE17F2C1757169203&_branch_referrer=H4sIAAAAAAAAA8soKSkottLXLy4pSixL1EssKNDLyczL1s8oMjBxdzKvKgpPsq8rSk1LLSrKzEuPTyrKLy9OLbL1zU%2FKzElVNTIITkxLLMoEAH%2Fi%2F0hGAAAA&_branch_match_id=1492883182171745297 )
+4. Log in strava di browser
+5. Hapus semua bagian tautan aktivitas dari mulai tanda tanya, hingga jadi seperti ini:
+https://www.strava.com/activities/15711586121
+6. tambahkan /export_tcx di akhir, sehingga jadi seperti ini:
+https://www.strava.com/activities/15711586121/export_tcx
+7. file tcx akan terdownload, upload di sini:

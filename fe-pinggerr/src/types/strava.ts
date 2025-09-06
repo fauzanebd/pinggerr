@@ -77,6 +77,7 @@ export interface ActivityListProps {
 export interface ActivityVisualizationProps {
   activity: StravaActivity;
   onDownload?: (imageUrl: string) => void;
+  language: "en" | "id";
 }
 
 export interface ShareDialogProps {
