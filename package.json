@@ -1,0 +1,44 @@
+{
+  "name": "strava-activity-visualizer",
+  "version": "1.0.0",
+  "description": "A beautiful web application that generates shareable graphics of Strava activities using pink and green themes",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter frontend dev\" \"pnpm --filter backend start\"",
+    "build": "pnpm --filter frontend build && pnpm --filter backend build",
+    "deploy": "./deploy.sh",
+    "install:all": "pnpm install && pnpm --filter frontend install && pnpm --filter backend install",
+    "lint": "pnpm --filter frontend lint",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "keywords": [
+    "strava",
+    "activity",
+    "visualization",
+    "cloudflare",
+    "react",
+    "typescript",
+    "oauth",
+    "canvas",
+    "graphics"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/strava-activity-visualizer.git"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}

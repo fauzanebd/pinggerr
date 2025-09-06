@@ -1,0 +1,10 @@
+# Vite/React specific
+dist-ssr/
+*.tsbuildinfo
+
+# Storybook
+storybook-static/
+
+# Testing
+coverage/
+.nyc_output

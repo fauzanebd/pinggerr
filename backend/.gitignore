@@ -1,0 +1,10 @@
+# Cloudflare Workers specific
+.wrangler/
+wrangler.toml.bak
+
+# Worker build outputs
+worker.js
+worker.js.map
+
+# Vitest
+coverage/
