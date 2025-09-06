@@ -162,8 +162,24 @@ function MainApp() {
           )}
         </div>
 
+        {/* Privacy Disclaimer */}
+        <div className="max-w-2xl mx-auto mt-8 mb-4">
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="pt-4 pb-4">
+              <div className="text-center">
+                <p className="text-blue-800 text-sm">
+                  <strong>Privacy Notice:</strong> Your Strava data is processed
+                  locally in your browser and is not stored on our servers. Only
+                  you can see your activity data - it remains completely private
+                  and secure.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Footer */}
-        <div className="text-center mt-8 text-muted-foreground">
+        <div className="text-center mt-4 text-muted-foreground">
           developed by{" "}
           <a
             href="https://instagram.com/fauzanebd"
