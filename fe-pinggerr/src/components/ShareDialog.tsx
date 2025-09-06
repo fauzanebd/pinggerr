@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useSharing } from "@/hooks/useSharing";
-import type { StravaActivity, ShareDialogProps } from "@/types/strava";
+import type { ShareDialogProps } from "@/types/strava";
 
 export const ShareDialog: React.FC<ShareDialogProps> = ({
   activity,
