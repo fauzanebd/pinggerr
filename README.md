@@ -120,30 +120,6 @@ The Cloudflare Worker provides:
 - CORS handling for frontend requests
 - Environment variable management
 
-## Deployment
-
-### Frontend (Cloudflare Pages)
-
-1. Push your code to GitHub
-2. Connect the repository to Cloudflare Pages
-3. Set build command: `pnpm run build`
-4. Set build output directory: `dist`
-5. Configure environment variables in Cloudflare Pages
-
-### Backend (Cloudflare Workers)
-
-1. Deploy the worker:
-
-   ```bash
-   pnpm run deploy
-   ```
-
-2. Set production secrets:
-   ```bash
-   pnpm wrangler secret put STRAVA_CLIENT_ID --env production
-   pnpm wrangler secret put STRAVA_CLIENT_SECRET --env production
-   ```
-
 ## Security
 
 - Client secret is never exposed to the frontend
