@@ -25,12 +25,6 @@ export const AuthCallback: React.FC<AuthCallbackProps> = ({
     if (code) {
       exchangeCode(code)
         .then(() => {
-          // Clear URL parameters
-          window.history.replaceState(
-            {},
-            document.title,
-            window.location.pathname
-          );
           onSuccess();
         })
         .catch((err) => {

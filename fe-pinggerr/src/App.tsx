@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,14 +43,15 @@ function MainApp() {
   const [selectedActivity, setSelectedActivity] =
     useState<StravaActivity | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Handle OAuth callback
   const isCallbackRoute = location.pathname === "/auth/callback";
 
   const handleAuthSuccess = () => {
     setAuthError(null);
-    // Redirect to main app
-    window.location.href = "/";
+    // Navigate to main app without reloading
+    navigate("/", { replace: true });
   };
 
   const handleAuthError = (error: string) => {
