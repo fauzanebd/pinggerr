@@ -118,7 +118,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
 
   const formatHeartRate = (bpm: number) => `${Math.round(bpm)} BPM`;
 
-  const formatCadence = (rpm: number) => `${Math.round(rpm)} SPM`;
+  // const formatCadence = (rpm: number) => `${Math.round(rpm)} SPM`;
 
   // Available stats for selection
   const availableStats = {
@@ -161,15 +161,15 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
           },
         }
       : {}),
-    ...(activity.average_cadence
-      ? {
-          cadence: {
-            label: "AVG CADENCE",
-            value: formatCadence(activity.average_cadence),
-            shortLabel: "AVG CADENCE",
-          },
-        }
-      : {}),
+    // ...(activity.average_cadence
+    //   ? {
+    //       cadence: {
+    //         label: "AVG CADENCE",
+    //         value: formatCadence(activity.average_cadence),
+    //         shortLabel: "AVG CADENCE",
+    //       },
+    //     }
+    //   : {}),
   };
 
   // Process polyline data for map visualization with proper constraints
