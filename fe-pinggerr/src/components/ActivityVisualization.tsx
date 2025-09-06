@@ -1,13 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import {
-  Stage,
-  Layer,
-  Line,
-  Text,
-  Rect,
-  Group,
-  Image as KonvaImage,
-} from "react-konva";
+// Konva is imported dynamically in generateImage function
 import { decode } from "@googlemaps/polyline-codec";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,17 +12,13 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   activity,
   onDownload,
 }) => {
-  const stageRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const logoImageRef = useRef<HTMLImageElement | null>(null);
-  const [dimensions, setDimensions] = useState({ width: 993, height: 1238 });
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
     null
   );
   const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
-  const [checkerPattern, setCheckerPattern] =
-    useState<HTMLCanvasElement | null>(null);
 
   // User customizable options
   const [selectedStats, setSelectedStats] = useState<string[]>([
@@ -46,34 +34,8 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   const dataColor = invertColors ? BRAND_GREEN : BRAND_PINK;
   const mapColor = invertColors ? BRAND_PINK : BRAND_GREEN;
 
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        const container = containerRef.current;
-        const containerWidth = container.clientWidth - 32;
-        const maxWidth = Math.min(containerWidth, 993);
-        const width = maxWidth;
-
-        // Better mobile-responsive height calculation
-        const isMobile = width < 640; // Tailwind's sm breakpoint
-        let height;
-
-        if (isMobile) {
-          // Taller aspect ratio for mobile to give more space for text
-          height = width * 1.4; // 1.4:1 ratio for mobile
-        } else {
-          // Square-ish for desktop
-          height = width * 1.1; // Slightly taller than square
-        }
-
-        setDimensions({ width, height });
-      }
-    };
-
-    updateDimensions();
-    window.addEventListener("resize", updateDimensions);
-    return () => window.removeEventListener("resize", updateDimensions);
-  }, []);
+  // Fixed dimensions for consistent output
+  const CANVAS_DIMENSIONS = { width: 1080, height: 1080 };
 
   // Load Strava logo
   useEffect(() => {
@@ -85,14 +47,12 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
     logoImageRef.current = img;
   }, []);
 
-  // Create checker pattern when dimensions change
+  // Generate image when parameters change
   useEffect(() => {
-    const pattern = createCheckerBackground(
-      dimensions.width,
-      dimensions.height
-    );
-    setCheckerPattern(pattern);
-  }, [dimensions]);
+    if (logoImage) {
+      generateImage();
+    }
+  }, [logoImage, selectedStats, invertColors, activity]);
 
   // Helper functions for formatting
   const formatDistance = (meters: number) => `${(meters / 1000).toFixed(1)} km`;
@@ -164,7 +124,8 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   };
 
   // Process polyline data for map visualization with proper constraints
-  const processPolyline = (canvasDimensions = dimensions) => {
+  const processPolyline = () => {
+    const canvasDimensions = CANVAS_DIMENSIONS;
     const polyline = activity.map?.polyline || activity.map?.summary_polyline;
     if (!polyline) return [];
 
@@ -180,14 +141,9 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       const minLng = Math.min(...lngs);
       const maxLng = Math.max(...lngs);
 
-      // Define layout areas - responsive proportions
-      const isMobile = canvasDimensions.width < 640;
-      const dataAreaHeight = isMobile
-        ? canvasDimensions.height * 0.45 // 45% for data on mobile (more space for text)
-        : canvasDimensions.height * 0.4; // 40% for data on desktop
-      const mapAreaHeight = isMobile
-        ? canvasDimensions.height * 0.45 // 45% for map on mobile
-        : canvasDimensions.height * 0.5; // 50% for map on desktop
+      // Define layout areas - fixed proportions for consistent output
+      const dataAreaHeight = canvasDimensions.height * 0.4; // 40% for data
+      const mapAreaHeight = canvasDimensions.height * 0.5; // 50% for map
 
       const mapPadding = canvasDimensions.width * 0.08; // 8% padding
       const mapAreaX = mapPadding;
@@ -234,9 +190,6 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
 
   const pathPoints = processPolyline();
 
-  // Mobile detection for display optimizations
-  const isMobileDisplay = dimensions.width < 640;
-
   // Helper function to get text width for centering
   const getTextWidth = (
     text: string,
@@ -252,46 +205,9 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
     return 0;
   };
 
-  // Generate checkered background pattern for the entire canvas
-  const createCheckerBackground = (width: number, height: number) => {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    const squareSize = 20;
-
-    // Make sure we have exact dimensions
-    canvas.width = Math.ceil(width);
-    canvas.height = Math.ceil(height);
-
-    if (context) {
-      // Fill the entire canvas with base color first
-      context.fillStyle = "#f0f0f0";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Add checker pattern
-      for (let x = 0; x < canvas.width; x += squareSize) {
-        for (let y = 0; y < canvas.height; y += squareSize) {
-          const isEven =
-            (Math.floor(x / squareSize) + Math.floor(y / squareSize)) % 2 === 0;
-          if (!isEven) {
-            context.fillStyle = "#ffffff";
-            // Make sure to fill to the edge
-            const rectWidth = Math.min(squareSize, canvas.width - x);
-            const rectHeight = Math.min(squareSize, canvas.height - y);
-            context.fillRect(x, y, rectWidth, rectHeight);
-          }
-        }
-      }
-    }
-
-    return canvas;
-  };
-
-  // Fixed dimensions for consistent downloads across all devices
-  const DOWNLOAD_DIMENSIONS = { width: 1080, height: 1080 };
-
-  // Generate image for download/sharing
+  // Generate image for both preview and download
   const generateImage = async () => {
-    if (!stageRef.current || !logoImage) return null;
+    if (!logoImage) return null;
 
     setIsGenerating(true);
     try {
@@ -301,30 +217,27 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       // Create a temporary stage for image generation with fixed dimensions
       const tempStage = new Konva.Stage({
         container: document.createElement("div"),
-        width: DOWNLOAD_DIMENSIONS.width,
-        height: DOWNLOAD_DIMENSIONS.height,
+        width: CANVAS_DIMENSIONS.width,
+        height: CANVAS_DIMENSIONS.height,
       });
 
       const tempLayer = new Konva.Layer();
       tempStage.add(tempLayer);
 
-      // Calculate layout for download dimensions
-      const downloadPathPoints = processPolyline(DOWNLOAD_DIMENSIONS);
-
-      // Add stats panel with download dimensions
+      // Add stats panel
       selectedStats.slice(0, 3).forEach((statKey, index) => {
         const stat = availableStats[statKey as keyof typeof availableStats];
 
-        // Use proportional spacing based on data area (use desktop proportions for downloads)
-        const dataAreaHeight = DOWNLOAD_DIMENSIONS.height * 0.4;
+        // Use proportional spacing based on data area
+        const dataAreaHeight = CANVAS_DIMENSIONS.height * 0.4;
         const availableSpace = dataAreaHeight - 60;
         const spacing = availableSpace / 3;
         const startY = 60;
         const statY = startY + index * spacing;
 
-        // Responsive font sizes based on canvas size
-        const labelSize = Math.max(14, DOWNLOAD_DIMENSIONS.width * 0.02);
-        const valueSize = Math.max(28, DOWNLOAD_DIMENSIONS.width * 0.048);
+        // Font sizes based on canvas size
+        const labelSize = Math.max(14, CANVAS_DIMENSIONS.width * 0.02);
+        const valueSize = Math.max(28, CANVAS_DIMENSIONS.width * 0.048);
 
         const labelWidth = getTextWidth(stat.label, labelSize, "500");
         const valueWidth = getTextWidth(stat.value, valueSize, "bold");
@@ -332,7 +245,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
         // Add label
         tempLayer.add(
           new Konva.Text({
-            x: DOWNLOAD_DIMENSIONS.width / 2 - labelWidth / 2,
+            x: CANVAS_DIMENSIONS.width / 2 - labelWidth / 2,
             y: statY,
             text: stat.label,
             fontSize: labelSize,
@@ -345,7 +258,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
         // Add value
         tempLayer.add(
           new Konva.Text({
-            x: DOWNLOAD_DIMENSIONS.width / 2 - valueWidth / 2,
+            x: CANVAS_DIMENSIONS.width / 2 - valueWidth / 2,
             y: statY + labelSize + 4,
             text: stat.value,
             fontSize: valueSize,
@@ -357,11 +270,11 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       });
 
       // Add map path if available
-      if (downloadPathPoints.length > 1) {
-        const strokeWidth = Math.max(2, DOWNLOAD_DIMENSIONS.width * 0.008);
+      if (pathPoints.length > 1) {
+        const strokeWidth = Math.max(2, CANVAS_DIMENSIONS.width * 0.008);
         tempLayer.add(
           new Konva.Line({
-            points: downloadPathPoints.flatMap((p) => [p.x, p.y]),
+            points: pathPoints.flatMap((p) => [p.x, p.y]),
             stroke: mapColor,
             strokeWidth: strokeWidth,
             lineJoin: "round",
@@ -371,16 +284,16 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       }
 
       // Add Strava logo
-      const logoAreaHeight = DOWNLOAD_DIMENSIONS.height * 0.1;
-      const logoWidth = Math.min(DOWNLOAD_DIMENSIONS.width * 0.2, 90);
+      const logoAreaHeight = CANVAS_DIMENSIONS.height * 0.1;
+      const logoWidth = Math.min(CANVAS_DIMENSIONS.width * 0.2, 90);
       const logoHeight = logoWidth * (30 / 88);
       const logoY =
-        DOWNLOAD_DIMENSIONS.height - logoAreaHeight / 2 - logoHeight / 2;
+        CANVAS_DIMENSIONS.height - logoAreaHeight / 2 - logoHeight / 2;
 
       tempLayer.add(
         new Konva.Image({
           image: logoImage,
-          x: DOWNLOAD_DIMENSIONS.width / 2 - logoWidth / 2,
+          x: CANVAS_DIMENSIONS.width / 2 - logoWidth / 2,
           y: logoY,
           width: logoWidth,
           height: logoHeight,
@@ -499,162 +412,31 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
         </div>
 
         <div ref={containerRef} className="w-full">
-          <div className="border rounded-lg overflow-hidden">
-            <Stage
-              width={dimensions.width}
-              height={dimensions.height}
-              ref={stageRef}
-            >
-              <Layer>
-                {/* Checkered Background for preview */}
-                {checkerPattern && (
-                  <KonvaImage
-                    id="checkerBackground"
-                    image={checkerPattern}
-                    x={0}
-                    y={0}
-                    width={dimensions.width}
-                    height={dimensions.height}
-                    perfectDrawEnabled={false}
-                    listening={false}
-                  />
-                )}
-
-                {/* Transparent background rectangle for download */}
-                <Rect
-                  id="backgroundRect"
-                  x={0}
-                  y={0}
-                  width={dimensions.width}
-                  height={dimensions.height}
-                  fill="transparent"
-                  visible={false}
-                />
-
-                {/* Stats Panel - 3 stats vertically at top, centered */}
-                <Group>
-                  {selectedStats.slice(0, 3).map((statKey, index) => {
-                    const stat =
-                      availableStats[statKey as keyof typeof availableStats];
-
-                    // Use proportional spacing based on data area (responsive)
-                    const dataAreaHeight = isMobileDisplay
-                      ? dimensions.height * 0.45 // More space for text on mobile
-                      : dimensions.height * 0.4;
-                    const availableSpace = dataAreaHeight - 60; // Leave some padding
-                    const spacing = availableSpace / 3; // Divide equally among 3 stats
-                    const startY = 60; // Top padding
-                    const statY = startY + index * spacing;
-
-                    // Responsive font sizes with better mobile sizing
-                    const labelSize = isMobileDisplay
-                      ? Math.max(16, dimensions.width * 0.028) // Larger text on mobile
-                      : Math.max(14, dimensions.width * 0.02);
-                    const valueSize = isMobileDisplay
-                      ? Math.max(32, dimensions.width * 0.055) // Larger values on mobile
-                      : Math.max(28, dimensions.width * 0.048);
-
-                    const labelWidth = getTextWidth(
-                      stat.label,
-                      labelSize,
-                      "500"
-                    );
-                    const valueWidth = getTextWidth(
-                      stat.value,
-                      valueSize,
-                      "bold"
-                    );
-
-                    return (
-                      <Group key={statKey}>
-                        {/* Stat Label - light font, centered */}
-                        <Text
-                          x={dimensions.width / 2 - labelWidth / 2}
-                          y={statY}
-                          text={stat.label}
-                          fontSize={labelSize}
-                          fontFamily="'Funnel Display', sans-serif"
-                          fontStyle="400"
-                          fill={dataColor}
-                        />
-                        {/* Stat Value - bold font, centered */}
-                        <Text
-                          x={dimensions.width / 2 - valueWidth / 2}
-                          y={statY + labelSize + 4}
-                          text={stat.value}
-                          fontSize={valueSize}
-                          fontFamily="'Funnel Display', sans-serif"
-                          fontStyle="bold"
-                          fill={dataColor}
-                        />
-                      </Group>
-                    );
-                  })}
-                </Group>
-
-                {/* Activity Type Badge */}
-                {/* <Rect
-                  x={dimensions.width / 2 - 40}
-                  y={dimensions.height - 90}
-                  width={80}
-                  height={25}
-                  fill={dataColor}
-                  cornerRadius={12}
-                />
-                <Text
-                  x={dimensions.width / 2}
-                  y={dimensions.height - 83}
-                  text={activity.type.toUpperCase()}
-                  fontSize={12}
-                  fontFamily="Arial, sans-serif"
-                  fontStyle="bold"
-                  fill="white"
-                  align="center"
-                /> */}
-
-                {/* Map Path - just the line, no start/end points */}
-                {pathPoints.length > 1 &&
-                  (() => {
-                    // Use proportional stroke width with better mobile sizing
-                    const strokeWidth = isMobileDisplay
-                      ? Math.max(3, dimensions.width * 0.012) // Thicker line on mobile for visibility
-                      : Math.max(2, dimensions.width * 0.008);
-
-                    return (
-                      <Line
-                        points={pathPoints.flatMap((p) => [p.x, p.y])}
-                        stroke={mapColor}
-                        strokeWidth={strokeWidth}
-                        lineJoin="round"
-                        lineCap="round"
-                      />
-                    );
-                  })()}
-
-                {/* Powered by Strava logo at bottom, centered */}
-                {logoImage &&
-                  (() => {
-                    // Use proportional sizing for logo with mobile optimization
-                    const logoAreaHeight = dimensions.height * 0.1;
-                    const logoWidth = isMobileDisplay
-                      ? Math.min(dimensions.width * 0.25, 80) // Slightly larger on mobile
-                      : Math.min(dimensions.width * 0.2, 90);
-                    const logoHeight = logoWidth * (30 / 88); // Maintain aspect ratio
-                    const logoY =
-                      dimensions.height - logoAreaHeight / 2 - logoHeight / 2; // Center in logo area
-
-                    return (
-                      <KonvaImage
-                        image={logoImage}
-                        x={dimensions.width / 2 - logoWidth / 2}
-                        y={logoY}
-                        width={logoWidth}
-                        height={logoHeight}
-                      />
-                    );
-                  })()}
-              </Layer>
-            </Stage>
+          <div className="border rounded-lg overflow-hidden flex items-center justify-center bg-gray-50">
+            {isGenerating ? (
+              <div className="flex items-center justify-center min-h-[400px]">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-pink mx-auto mb-2"></div>
+                  <p className="text-sm text-muted-foreground">
+                    Generating visualization...
+                  </p>
+                </div>
+              </div>
+            ) : generatedImageUrl ? (
+              <img
+                src={generatedImageUrl}
+                alt="Activity Visualization"
+                className="w-full h-auto max-w-full"
+                style={{
+                  maxHeight: "80vh",
+                  objectFit: "contain",
+                }}
+              />
+            ) : (
+              <div className="flex items-center justify-center min-h-[400px]">
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              </div>
+            )}
           </div>
 
           {/* Info below visualization */}
