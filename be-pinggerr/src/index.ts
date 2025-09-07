@@ -209,12 +209,12 @@ async function handleTrackDownload(request: Request, env: Env): Promise<Response
 		const downloadCountKey = 'total_downloads';
 
 		// Get current count, default to 0 if not exists
-		const currentCountString = await env.DOWNLOAD_STATS.get(downloadCountKey);
+		const currentCountString = await env.PINGGERR_PGS_DOWNLOAD_STATS.get(downloadCountKey);
 		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
 
 		// Increment and store the new count
 		const newCount = currentCount + 1;
-		await env.DOWNLOAD_STATS.put(downloadCountKey, newCount.toString());
+		await env.PINGGERR_PGS_DOWNLOAD_STATS.put(downloadCountKey, newCount.toString());
 
 		// Return the new count
 		return new Response(
@@ -250,7 +250,7 @@ async function handleGetStats(request: Request, env: Env): Promise<Response> {
 		const downloadCountKey = 'total_downloads';
 
 		// Get current count, default to 0 if not exists
-		const currentCountString = await env.DOWNLOAD_STATS.get(downloadCountKey);
+		const currentCountString = await env.PINGGERR_PGS_DOWNLOAD_STATS.get(downloadCountKey);
 		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
 
 		// Return the current stats
