@@ -5,6 +5,7 @@ declare namespace Cloudflare {
 	interface Env {
 		STRAVA_CLIENT_ID: string;
 		STRAVA_CLIENT_SECRET: string;
+		DOWNLOAD_STATS: KVNamespace;
 	}
 }
 interface Env extends Cloudflare.Env {}

@@ -43,8 +43,12 @@ export default {
 				return handleTokenExchange(request, env);
 			case '/refresh':
 				return handleTokenRefresh(request, env);
+			case '/count-download':
+				return handleTrackDownload(request, env);
+			case '/stats':
+				return handleGetStats(request, env);
 			case '/':
-				return new Response('Strava OAuth Worker - Endpoints: /exchange, /refresh', {
+				return new Response('Strava OAuth Worker - Endpoints: /exchange, /refresh, /count-download, /stats', {
 					headers: corsHeaders,
 				});
 			default:
@@ -183,6 +187,83 @@ async function handleTokenRefresh(request: Request, env: Env): Promise<Response>
 		);
 	} catch (error) {
 		console.error('Token refresh error:', error);
+		return new Response(JSON.stringify({ error: 'Internal server error' }), {
+			status: 500,
+			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+		});
+	}
+}
+
+/**
+ * Track a download event by incrementing the counter
+ */
+async function handleTrackDownload(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'POST') {
+		return new Response('Method not allowed', {
+			status: 405,
+			headers: corsHeaders,
+		});
+	}
+
+	try {
+		const downloadCountKey = 'total_downloads';
+
+		// Get current count, default to 0 if not exists
+		const currentCountString = await env.DOWNLOAD_STATS.get(downloadCountKey);
+		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
+
+		// Increment and store the new count
+		const newCount = currentCount + 1;
+		await env.DOWNLOAD_STATS.put(downloadCountKey, newCount.toString());
+
+		// Return the new count
+		return new Response(
+			JSON.stringify({
+				success: true,
+				total_downloads: newCount,
+			}),
+			{
+				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+			}
+		);
+	} catch (error) {
+		console.error('Download tracking error:', error);
+		return new Response(JSON.stringify({ error: 'Internal server error' }), {
+			status: 500,
+			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+		});
+	}
+}
+
+/**
+ * Get download statistics
+ */
+async function handleGetStats(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'GET') {
+		return new Response('Method not allowed', {
+			status: 405,
+			headers: corsHeaders,
+		});
+	}
+
+	try {
+		const downloadCountKey = 'total_downloads';
+
+		// Get current count, default to 0 if not exists
+		const currentCountString = await env.DOWNLOAD_STATS.get(downloadCountKey);
+		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
+
+		// Return the current stats
+		return new Response(
+			JSON.stringify({
+				total_downloads: currentCount,
+			}),
+			{
+				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+			}
+		);
+	} catch (error) {
+		console.error('Stats retrieval error:', error);
 		return new Response(JSON.stringify({ error: 'Internal server error' }), {
 			status: 500,
 			headers: { ...corsHeaders, 'Content-Type': 'application/json' },

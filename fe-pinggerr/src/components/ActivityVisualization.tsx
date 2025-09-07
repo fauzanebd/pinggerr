@@ -4,6 +4,7 @@ import { decode } from "@googlemaps/polyline-codec";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ActivityVisualizationProps } from "@/types/strava";
+import { config } from "@/config/env";
 
 // Strava logo
 import stravaLogoWhite from "@/assets/api_logo_pwrdBy_strava_stack_white.svg";
@@ -119,6 +120,20 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
   const formatHeartRate = (bpm: number) => `${Math.round(bpm)} BPM`;
 
   // const formatCadence = (rpm: number) => `${Math.round(rpm)} SPM`;
+
+  // Track download in the backend
+  const trackDownload = async () => {
+    try {
+      await fetch(`${config.workerUrl}/count-download`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    } catch (error) {
+      // Do nothing if counting download fails
+    }
+  };
 
   // Available stats for selection
   const availableStats = {
@@ -410,6 +425,9 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
         mapColor: currentMapColor,
       }));
     if (!imageUrl) return;
+
+    // Track the download before actually downloading
+    await trackDownload();
 
     // Create download link
     const link = document.createElement("a");
