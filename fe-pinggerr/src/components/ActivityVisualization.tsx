@@ -58,9 +58,6 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
           );
           await specialGothicFont.load();
           document.fonts.add(specialGothicFont);
-          console.log(
-            "✅ Special Gothic Expanded One font loaded successfully"
-          );
           setFontLoaded(true);
         } else {
           // Fallback: wait a bit for font to load naturally

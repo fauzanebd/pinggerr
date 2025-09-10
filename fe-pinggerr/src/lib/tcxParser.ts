@@ -3,7 +3,11 @@
  * Converts TCX data to Strava activity format
  */
 
-import type { StravaActivity } from "@/types/strava";
+import type {
+  StravaActivity,
+  ActivityLap,
+  ActivityTrackpoint,
+} from "@/types/strava";
 import { encode } from "@mapbox/polyline";
 
 export interface TcxTrackpoint {
@@ -161,6 +165,83 @@ export function parseTcxContent(xmlContent: string): TcxActivity {
 }
 
 /**
+ * Convert TCX trackpoints to common ActivityTrackpoint format
+ */
+function convertTcxTrackpointsToActivityTrackpoints(
+  tcxLaps: TcxLap[]
+): ActivityTrackpoint[] {
+  const allTrackpoints = tcxLaps.flatMap((lap) => lap.trackpoints);
+
+  return allTrackpoints.map(
+    (tp): ActivityTrackpoint => ({
+      time: tp.time,
+      latitude: tp.latitude,
+      longitude: tp.longitude,
+      altitude: tp.altitude,
+      distance: tp.distance,
+      heartRate: tp.heartRate,
+      speed: tp.speed,
+      cadence: tp.cadence,
+      watts: tp.watts,
+    })
+  );
+}
+
+/**
+ * Convert TCX lap data to common ActivityLap format
+ */
+function convertTcxLapsToActivityLaps(tcxLaps: TcxLap[]): ActivityLap[] {
+  let currentTrackpointIndex = 0;
+
+  return tcxLaps.map((lap, index) => {
+    const startIndex = currentTrackpointIndex;
+    const endIndex = currentTrackpointIndex + lap.trackpoints.length - 1;
+    currentTrackpointIndex += lap.trackpoints.length;
+
+    // Calculate elevation gain for this lap
+    const altitudes = lap.trackpoints
+      .filter((tp) => tp.altitude !== undefined)
+      .map((tp) => tp.altitude!);
+
+    let lapElevationGain = 0;
+    for (let i = 1; i < altitudes.length; i++) {
+      const gain = altitudes[i] - altitudes[i - 1];
+      if (gain > 0) {
+        lapElevationGain += gain;
+      }
+    }
+
+    // Calculate average watts from trackpoints
+    const watts = lap.trackpoints
+      .filter((tp) => tp.watts && tp.watts > 0)
+      .map((tp) => tp.watts!);
+    const averageWatts =
+      watts.length > 0
+        ? watts.reduce((sum, w) => sum + w, 0) / watts.length
+        : undefined;
+    const maxWatts = watts.length > 0 ? Math.max(...watts) : undefined;
+
+    return {
+      startTime: lap.startTime,
+      elapsedTime: lap.totalTimeSeconds,
+      distance: lap.distanceMeters,
+      averageSpeed: lap.distanceMeters / lap.totalTimeSeconds, // m/s
+      maxSpeed: lap.maximumSpeed,
+      averageHeartrate: lap.averageHeartRate,
+      maxHeartrate: lap.maximumHeartRate,
+      averageCadence: lap.averageCadence,
+      averageWatts,
+      maxWatts,
+      calories: lap.calories,
+      totalElevationGain: lapElevationGain,
+      startIndex,
+      endIndex,
+      lapIndex: index + 1, // 1-based lap number
+    };
+  });
+}
+
+/**
  * Convert TCX activity data to Strava activity format
  */
 export function convertTcxToStravaActivity(
@@ -176,6 +257,14 @@ export function convertTcxToStravaActivity(
     0
   );
   const totalElevationGain = calculateElevationGain(tcxActivity.laps);
+
+  // Convert lap data to common format
+  const laps = convertTcxLapsToActivityLaps(tcxActivity.laps);
+
+  // Convert trackpoint data to common format
+  const trackpoints = convertTcxTrackpointsToActivityTrackpoints(
+    tcxActivity.laps
+  );
 
   // Get all trackpoints for polyline generation
   const allTrackpoints = tcxActivity.laps.flatMap((lap) => lap.trackpoints);
@@ -270,6 +359,8 @@ export function convertTcxToStravaActivity(
     pr_count: 0,
     total_photo_count: 0,
     has_kudoed: false,
+    laps, // Include the converted lap data
+    trackpoints, // Include the converted trackpoint data
   };
 }
 
