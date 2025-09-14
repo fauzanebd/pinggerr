@@ -298,8 +298,19 @@ export const ActivityList: React.FC<ActivityListProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="text-xs text-muted-foreground">
-                    {formatDate(activity.start_date)}
+                  <div className="flex flex-col gap-1">
+                    <div className="text-xs text-muted-foreground">
+                      {formatDate(activity.start_date)}
+                    </div>
+                    <a
+                      href={`https://www.strava.com/activities/${activity.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-orange-600 hover:text-orange-700 font-medium underline"
+                      style={{ color: "#FC5200" }}
+                    >
+                      View on Strava
+                    </a>
                   </div>
                   <Button
                     size="sm"

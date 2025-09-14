@@ -112,16 +112,16 @@ function MainApp() {
             </Button>
           </div>
           <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-4">
-            {/* <span className="text-brand-pink">Strava</span>{" "}
-            <span className="text-brand-green">Activity</span> Visualizer */}
+            {/* <span className="text-brand-pink">Pinggerr</span>{": "}
+            <span className="text-brand-green">Visualize and Share Your Activity</span> */}
             {language === "en"
-              ? "Strava Activity Visualizer"
-              : "Visualisasi Aktivitas Strava"}
+              ? "Pinggerr: Visualize and Share Your Activity"
+              : "Pinggerr: Visualisasikan dan Bagikan Aktivitas Anda"}
           </h1>
           <p className="text-muted-foreground text-base sm:text-lg px-4">
             {language === "en"
-              ? "Create beautiful, shareable graphics of your Strava activities"
-              : "Buat grafik aktivitas Strava yang indah dan dapat dibagikan"}
+              ? "Create beautiful, shareable graphics of your activities"
+              : "Buat grafik aktivitas yang indah dan dapat dibagikan"}
           </p>
         </div>
 
@@ -214,13 +214,13 @@ function MainApp() {
               <CardHeader className="text-center">
                 <CardTitle className="flex items-center justify-center gap-2">
                   {language === "en"
-                    ? "Connect Your Strava Account"
-                    : "Hubungkan Akun Strava Anda"}
+                    ? "Connect to Import Your Activities"
+                    : "Hubungkan untuk Mengimpor Aktivitas Anda"}
                 </CardTitle>
                 <CardDescription>
                   {language === "en"
-                    ? "Connect your Strava account to generate beautiful visualizations of your recent activities"
-                    : "Hubungkan akun Strava Anda untuk membuat visualisasi yang indah dari aktivitas terbaru Anda"}
+                    ? "Connect your account to generate beautiful visualizations of your recent activities"
+                    : "Hubungkan akun Anda untuk membuat visualisasi yang indah dari aktivitas terbaru Anda"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center space-y-4">

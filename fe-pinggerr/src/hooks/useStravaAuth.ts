@@ -1,11 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { config } from "@/config/env";
 import type { StravaTokens, StravaActivity } from "@/types/strava";
+import {
+  StravaApi,
+  createStravaApi,
+  isTokenRefreshNeeded,
+} from "@/lib/stravaApi";
 
 export const useStravaAuth = () => {
   const [tokens, setTokens] = useState<StravaTokens | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Create StravaApi instance when tokens are available
+  const stravaApi = useMemo(() => createStravaApi(tokens), [tokens]);
 
   // Function to load tokens from localStorage
   const loadTokensFromStorage = () => {
@@ -158,65 +166,86 @@ export const useStravaAuth = () => {
     localStorage.removeItem("strava_tokens");
   };
 
+  // Helper function to handle API calls with automatic token refresh
+  const callApiWithRetry = async <T>(
+    apiCall: (api: StravaApi) => Promise<T>
+  ): Promise<T> => {
+    if (!stravaApi) {
+      throw new Error("Not authenticated");
+    }
+
+    try {
+      return await apiCall(stravaApi);
+    } catch (error) {
+      // If unauthorized and we have a refresh token, try to refresh
+      if (
+        error instanceof Error &&
+        isTokenRefreshNeeded(error) &&
+        tokens?.refresh_token
+      ) {
+        await refreshToken(tokens.refresh_token);
+
+        // Create new API instance with refreshed tokens and retry
+        const newTokens = JSON.parse(
+          localStorage.getItem("strava_tokens") || "{}"
+        );
+        const refreshedApi = createStravaApi(newTokens);
+        if (!refreshedApi) {
+          throw new Error("Failed to refresh authentication");
+        }
+
+        return await apiCall(refreshedApi);
+      }
+      throw error;
+    }
+  };
+
   // Fetch recent activities
   const fetchActivities = async (
     page = 1,
     perPage = 10
   ): Promise<StravaActivity[]> => {
-    if (!tokens?.access_token) {
-      throw new Error("No access token available");
-    }
-
-    const response = await fetch(
-      `https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=${perPage}`,
-      {
-        headers: {
-          Authorization: `Bearer ${tokens.access_token}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      // If unauthorized, try to refresh token
-      if (response.status === 401 && tokens.refresh_token) {
-        await refreshToken(tokens.refresh_token);
-        // Retry after refresh
-        return fetchActivities(page, perPage);
-      }
-      throw new Error("Failed to fetch activities");
-    }
-
-    return response.json();
+    return callApiWithRetry((api) => api.getActivities(page, perPage));
   };
 
   // Get detailed activity (includes full polyline)
   const fetchActivityDetails = async (
     activityId: number
   ): Promise<StravaActivity> => {
-    if (!tokens?.access_token) {
-      throw new Error("No access token available");
-    }
+    return callApiWithRetry((api) => api.getActivityDetails(activityId));
+  };
 
-    const response = await fetch(
-      `https://www.strava.com/api/v3/activities/${activityId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${tokens.access_token}`,
-        },
-      }
+  // Fetch lap data for a specific activity
+  const fetchActivityLaps = async (activityId: number) => {
+    return callApiWithRetry((api) => api.getActivityLaps(activityId));
+  };
+
+  // Fetch activity with its lap data
+  const fetchActivityWithLaps = async (
+    activityId: number
+  ): Promise<StravaActivity> => {
+    return callApiWithRetry((api) => api.getActivityWithLaps(activityId));
+  };
+
+  // Fetch activity streams (trackpoint data)
+  const fetchActivityStreams = async (activityId: number) => {
+    return callApiWithRetry((api) => api.getActivityStreams(activityId));
+  };
+
+  // Fetch activity with trackpoint data
+  const fetchActivityWithStreams = async (
+    activityId: number
+  ): Promise<StravaActivity> => {
+    return callApiWithRetry((api) => api.getActivityWithStreams(activityId));
+  };
+
+  // Fetch activity with both laps and trackpoint data
+  const fetchActivityWithLapsAndStreams = async (
+    activityId: number
+  ): Promise<StravaActivity> => {
+    return callApiWithRetry((api) =>
+      api.getActivityWithLapsAndStreams(activityId)
     );
-
-    if (!response.ok) {
-      // If unauthorized, try to refresh token
-      if (response.status === 401 && tokens.refresh_token) {
-        await refreshToken(tokens.refresh_token);
-        // Retry after refresh
-        return fetchActivityDetails(activityId);
-      }
-      throw new Error("Failed to fetch activity details");
-    }
-
-    return response.json();
   };
 
   return {
@@ -225,9 +254,16 @@ export const useStravaAuth = () => {
     isLoading,
     error,
     login,
-    logout,
     exchangeCode,
+    logout,
     fetchActivities,
     fetchActivityDetails,
+    fetchActivityLaps,
+    fetchActivityWithLaps,
+    fetchActivityStreams,
+    fetchActivityWithStreams,
+    fetchActivityWithLapsAndStreams,
+    // Expose the StravaApi instance for advanced usage
+    stravaApi,
   };
 };

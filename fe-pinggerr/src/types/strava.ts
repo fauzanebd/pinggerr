@@ -9,6 +9,48 @@ export interface StravaTokens {
   expires_in: number;
 }
 
+/**
+ * Common lap interface for both TCX and Strava lap data
+ */
+export interface ActivityLap {
+  id?: number; // Strava lap ID (not available in TCX)
+  startTime: string; // ISO timestamp
+  elapsedTime: number; // seconds
+  movingTime?: number; // seconds (Strava only)
+  distance: number; // meters
+  averageSpeed?: number; // m/s
+  maxSpeed?: number; // m/s
+  averageHeartrate?: number; // bpm
+  maxHeartrate?: number; // bpm
+  averageCadence?: number; // steps/min or rpm
+  averageWatts?: number; // watts
+  maxWatts?: number; // watts
+  calories?: number;
+  totalElevationGain?: number; // meters
+  startIndex?: number; // index in trackpoint array (TCX)
+  endIndex?: number; // index in trackpoint array (TCX)
+  lapIndex: number; // 1-based lap number
+}
+
+/**
+ * Common trackpoint interface for both TCX and Strava streams data
+ */
+export interface ActivityTrackpoint {
+  time?: string; // ISO timestamp
+  timeOffset?: number; // seconds from start (Strava streams)
+  latitude?: number;
+  longitude?: number;
+  altitude?: number; // meters
+  distance?: number; // cumulative meters
+  heartRate?: number; // bpm
+  speed?: number; // m/s (velocity_smooth from Strava)
+  cadence?: number; // steps/min or rpm
+  watts?: number; // power in watts
+  moving?: boolean; // Strava streams: was athlete moving
+  grade?: number; // Strava streams: grade percentage
+  temperature?: number; // Strava streams: celsius
+}
+
 export interface StravaActivity {
   resource_state: number;
   athlete: {
@@ -68,6 +110,10 @@ export interface StravaActivity {
   total_photo_count?: number;
   has_kudoed?: boolean;
   suffer_score?: number;
+  // Lap data - populated when fetched separately or parsed from TCX
+  laps?: ActivityLap[];
+  // Trackpoint data - populated when fetched from streams API or parsed from TCX
+  trackpoints?: ActivityTrackpoint[];
 }
 
 export interface ActivityListProps {
