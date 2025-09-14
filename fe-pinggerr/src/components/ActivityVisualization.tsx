@@ -450,6 +450,18 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
             {language === "en"
               ? "Activity Visualization"
               : "Visualisasi Aktivitas"}
+            {/* Only show "View on Strava" link if activity has an ID (from Strava API, not TCX) */}
+            {activity.id && (
+              <a
+                href={`https://www.strava.com/activities/${activity.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-orange-600 hover:text-orange-700 font-medium underline ml-2"
+                style={{ color: "#FC5200" }}
+              >
+                View on Strava
+              </a>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button
