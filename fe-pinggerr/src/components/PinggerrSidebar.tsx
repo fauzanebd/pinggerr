@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Palette, Layers3 } from "lucide-react";
+import { Palette } from "lucide-react";
 import PinggerrLogo from "@/assets/pinggerr_logo.svg";
 
 import {

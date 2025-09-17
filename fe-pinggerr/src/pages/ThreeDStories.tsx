@@ -7,7 +7,7 @@ import { SegmentCreator } from "@/components/SegmentCreator";
 import { SegmentManager } from "@/components/SegmentManager";
 import { FinalStatsOverlay } from "@/components/FinalStatsOverlay";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
-import { use3dDownloadTracker } from "@/hooks/use3dDownloadTracker";
+// import { use3dDownloadTracker } from "@/hooks/use3dDownloadTracker";
 import type {
   StravaActivity,
   ActivityTrackpoint,
@@ -27,7 +27,7 @@ export function ThreeDStories({
   onDownload: _onDownload,
 }: ThreeDStoriesProps) {
   const { stravaApi } = useStravaAuth();
-  const { track3dDownload } = use3dDownloadTracker();
+  // const { track3dDownload } = use3dDownloadTracker();
   const [enhancedActivity, setEnhancedActivity] =
     useState<StravaActivity>(activity);
   const [segments, setSegments] = useState<ActivitySegment[]>([]);
