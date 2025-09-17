@@ -66,6 +66,11 @@ function MainApp() {
     setShowInstructions(false);
   };
 
+  const handleLogoClick = () => {
+    // for now, just go back to the list
+    handleBackToList();
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -120,6 +125,7 @@ function MainApp() {
         onBackToList={handleBackToList}
         onLanguageChange={setLanguage}
         currentVisualizationType={currentVisualizationType}
+        onLogoClick={handleLogoClick}
       >
         <Routes>
           <Route

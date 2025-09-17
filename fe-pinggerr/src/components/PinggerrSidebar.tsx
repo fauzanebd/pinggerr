@@ -17,6 +17,7 @@ import {
 
 interface PinggerrSidebarProps extends React.ComponentProps<typeof Sidebar> {
   language: "en" | "id";
+  onLogoClick: () => void;
 }
 
 const visualizationTypes = [
@@ -30,19 +31,23 @@ const visualizationTypes = [
       id: "Visualisasi klasik pink & hijau",
     },
   },
-  {
-    id: "3d-stories",
-    title: { en: "3D Stories", id: "Cerita 3D" },
-    path: "/visualization/3d-stories",
-    icon: Layers3,
-    description: {
-      en: "Immersive 3D activity stories",
-      id: "Cerita aktivitas 3D yang imersif",
-    },
-  },
+  // {
+  //   id: "3d-stories",
+  //   title: { en: "3D Stories", id: "Cerita 3D" },
+  //   path: "/visualization/3d-stories",
+  //   icon: Layers3,
+  //   description: {
+  //     en: "Immersive 3D activity stories",
+  //     id: "Cerita aktivitas 3D yang imersif",
+  //   },
+  // },
 ];
 
-export function PinggerrSidebar({ language, ...props }: PinggerrSidebarProps) {
+export function PinggerrSidebar({
+  language,
+  onLogoClick,
+  ...props
+}: PinggerrSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -56,7 +61,7 @@ export function PinggerrSidebar({ language, ...props }: PinggerrSidebarProps) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <div className="cursor-pointer">
+              <div className="cursor-pointer" onClick={onLogoClick}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-secondary text-sidebar-primary-foreground">
                   <img src={PinggerrLogo} alt="Pinggerr" className="size-5" />
                 </div>

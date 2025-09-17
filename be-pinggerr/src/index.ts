@@ -43,8 +43,10 @@ export default {
 				return handleTokenExchange(request, env);
 			case '/refresh':
 				return handleTokenRefresh(request, env);
-			case '/count-download':
-				return handleTrackDownload(request, env);
+			case '/count-pgs-download':
+				return handleTrackPgsDownload(request, env);
+			case '/count-3ds-download':
+				return handleTrack3dsDownload(request, env);
 			case '/stats':
 				return handleGetStats(request, env);
 			case '/count-map-load':
@@ -53,7 +55,7 @@ export default {
 				return handleCheckMapLimit(request, env);
 			case '/':
 				return new Response(
-					'Strava OAuth Worker - Endpoints: /exchange, /refresh, /count-download, /stats, /count-map-load, /check-map-limit',
+					'Strava OAuth Worker - Endpoints: /exchange, /refresh, /count-pgs-download, /count-3ds-download, /stats, /count-map-load, /check-map-limit',
 					{
 						headers: corsHeaders,
 					}
@@ -202,9 +204,9 @@ async function handleTokenRefresh(request: Request, env: Env): Promise<Response>
 }
 
 /**
- * Track a download event by incrementing the counter
+ * Track a Pink Green activity download event by incrementing the counter
  */
-async function handleTrackDownload(request: Request, env: Env): Promise<Response> {
+async function handleTrackPgsDownload(request: Request, env: Env): Promise<Response> {
 	if (request.method !== 'POST') {
 		return new Response('Method not allowed', {
 			status: 405,
@@ -213,28 +215,69 @@ async function handleTrackDownload(request: Request, env: Env): Promise<Response
 	}
 
 	try {
-		const downloadCountKey = 'total_downloads';
+		const downloadCountKey = 'total_pgs_downloads';
 
 		// Get current count, default to 0 if not exists
-		const currentCountString = await env.PINGGERR_PGS_DOWNLOAD_STATS.get(downloadCountKey);
+		const currentCountString = await env.PINGGERR_STATS.get(downloadCountKey);
 		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
 
 		// Increment and store the new count
 		const newCount = currentCount + 1;
-		await env.PINGGERR_PGS_DOWNLOAD_STATS.put(downloadCountKey, newCount.toString());
+		await env.PINGGERR_STATS.put(downloadCountKey, newCount.toString());
 
 		// Return the new count
 		return new Response(
 			JSON.stringify({
 				success: true,
-				total_downloads: newCount,
+				total_pgs_downloads: newCount,
 			}),
 			{
 				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 			}
 		);
 	} catch (error) {
-		console.error('Download tracking error:', error);
+		console.error('PGS download tracking error:', error);
+		return new Response(JSON.stringify({ error: 'Internal server error' }), {
+			status: 500,
+			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+		});
+	}
+}
+
+/**
+ * Track a 3D Stories download event by incrementing the counter
+ */
+async function handleTrack3dsDownload(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'POST') {
+		return new Response('Method not allowed', {
+			status: 405,
+			headers: corsHeaders,
+		});
+	}
+
+	try {
+		const downloadCountKey = 'total_3ds_downloads';
+
+		// Get current count, default to 0 if not exists
+		const currentCountString = await env.PINGGERR_STATS.get(downloadCountKey);
+		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
+
+		// Increment and store the new count
+		const newCount = currentCount + 1;
+		await env.PINGGERR_STATS.put(downloadCountKey, newCount.toString());
+
+		// Return the new count
+		return new Response(
+			JSON.stringify({
+				success: true,
+				total_3ds_downloads: newCount,
+			}),
+			{
+				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+			}
+		);
+	} catch (error) {
+		console.error('3DS download tracking error:', error);
 		return new Response(JSON.stringify({ error: 'Internal server error' }), {
 			status: 500,
 			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -254,16 +297,27 @@ async function handleGetStats(request: Request, env: Env): Promise<Response> {
 	}
 
 	try {
-		const downloadCountKey = 'total_downloads';
+		// Get all download counts
+		const pgsDownloadsString = await env.PINGGERR_STATS.get('total_pgs_downloads');
+		const threeDsDownloadsString = await env.PINGGERR_STATS.get('total_3ds_downloads');
 
-		// Get current count, default to 0 if not exists
-		const currentCountString = await env.PINGGERR_PGS_DOWNLOAD_STATS.get(downloadCountKey);
-		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
+		const pgsDownloads = pgsDownloadsString ? parseInt(pgsDownloadsString, 10) : 0;
+		const threeDsDownloads = threeDsDownloadsString ? parseInt(threeDsDownloadsString, 10) : 0;
+
+		// Get current month's map loads
+		const now = new Date();
+		const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+		const mapLoadCountKey = `map_loads_${monthKey}`;
+		const mapLoadsString = await env.PINGGERR_STATS.get(mapLoadCountKey);
+		const mapLoads = mapLoadsString ? parseInt(mapLoadsString, 10) : 0;
 
 		// Return the current stats
 		return new Response(
 			JSON.stringify({
-				total_downloads: currentCount,
+				total_pgs_downloads: pgsDownloads,
+				total_3ds_downloads: threeDsDownloads,
+				map_loads_this_month: mapLoads,
+				month_key: monthKey,
 			}),
 			{
 				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -296,12 +350,12 @@ async function handleTrackMapLoad(request: Request, env: Env): Promise<Response>
 		const mapLoadCountKey = `map_loads_${monthKey}`;
 
 		// Get current count for this month, default to 0 if not exists
-		const currentCountString = await env.PINGGERR_PGS_DOWNLOAD_STATS.get(mapLoadCountKey);
+		const currentCountString = await env.PINGGERR_STATS.get(mapLoadCountKey);
 		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
 
 		// Increment and store the new count
 		const newCount = currentCount + 1;
-		await env.PINGGERR_PGS_DOWNLOAD_STATS.put(mapLoadCountKey, newCount.toString());
+		await env.PINGGERR_STATS.put(mapLoadCountKey, newCount.toString());
 
 		// Return the new count and monthly key
 		return new Response(
@@ -341,7 +395,7 @@ async function handleCheckMapLimit(request: Request, env: Env): Promise<Response
 		const mapLoadCountKey = `map_loads_${monthKey}`;
 
 		// Get current count for this month, default to 0 if not exists
-		const currentCountString = await env.PINGGERR_PGS_DOWNLOAD_STATS.get(mapLoadCountKey);
+		const currentCountString = await env.PINGGERR_STATS.get(mapLoadCountKey);
 		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
 
 		const MONTHLY_LIMIT = 50000;

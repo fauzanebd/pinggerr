@@ -27,6 +27,7 @@ interface PinggerrLayoutProps {
   onBackToList: () => void;
   onLanguageChange: (lang: "en" | "id") => void;
   currentVisualizationType?: string;
+  onLogoClick: () => void;
 }
 
 export function PinggerrLayout({
@@ -37,12 +38,13 @@ export function PinggerrLayout({
   onBackToList,
   onLanguageChange,
   currentVisualizationType = "PinkGreen Activity",
+  onLogoClick,
 }: PinggerrLayoutProps) {
   const formatDistance = (meters: number) => `${(meters / 1000).toFixed(1)} km`;
   const formatElevation = (meters: number) => `${meters.toFixed(2)} m`;
   return (
     <SidebarProvider>
-      <PinggerrSidebar language={language} />
+      <PinggerrSidebar language={language} onLogoClick={onLogoClick} />
       <SidebarInset>
         {/* Header with breadcrumb and language toggle */}
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">

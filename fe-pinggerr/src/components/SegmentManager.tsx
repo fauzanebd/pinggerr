@@ -320,7 +320,7 @@ export const SegmentManager: React.FC<SegmentManagerProps> = ({
                     variant="outline"
                     className="text-indigo-600 hover:text-indigo-700"
                     onClick={() => {
-                      /* TODO: Implement export */
+                      /* TODO: Implement export - use track3dDownload() from use3dDownloadTracker hook */
                     }}
                   >
                     <Download className="w-4 h-4 mr-1" />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { config } from "@/config/env";
 
 interface MapLoadStatus {
@@ -26,7 +26,7 @@ export const useMapLoadGuard = () => {
   });
 
   // Check current map load status
-  const checkMapLimit = async () => {
+  const checkMapLimit = useCallback(async () => {
     setStatus((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
@@ -59,10 +59,10 @@ export const useMapLoadGuard = () => {
       }));
       return false;
     }
-  };
+  }, []);
 
   // Track a map load (call this when initializing a map)
-  const trackMapLoad = async () => {
+  const trackMapLoad = useCallback(async () => {
     try {
       const response = await fetch(`${config.workerUrl}/count-map-load`, {
         method: "POST",
@@ -93,7 +93,7 @@ export const useMapLoadGuard = () => {
       console.error("Failed to track map load:", error);
       return null;
     }
-  };
+  }, []);
 
   // Check limit on mount
   useEffect(() => {

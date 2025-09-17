@@ -1,4 +1,10 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, {
+  useRef,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { config } from "@/config/env";
@@ -84,7 +90,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
           container: mapContainer.current!,
           style: "mapbox://styles/mapbox/satellite-v9",
           center: bounds.getCenter(),
-          zoom: 12,
+          zoom: 10,
           pitch: 60,
           bearing: 0,
           antialias: true,
@@ -156,13 +162,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         cancelAnimationFrame(animationFrame.current);
       }
     };
-  }, [
-    canLoadMap,
-    isCheckingLimit,
-    activity.trackpoints,
-    segments,
-    trackMapLoad,
-  ]);
+  }, [canLoadMap, isCheckingLimit, activity.trackpoints, trackMapLoad]);
 
   // Add GPS path to map
   const addGpsPath = useCallback(
@@ -196,7 +196,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
           "line-cap": "round",
         },
         paint: {
-          "line-color": "#FF6B6B",
+          "line-color": "#F99FD2",
           "line-width": 4,
           "line-opacity": 0.8,
         },
@@ -221,7 +221,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         source: "progress-point",
         paint: {
           "circle-radius": 8,
-          "circle-color": "#4ECDC4",
+          "circle-color": "#165027",
           "circle-stroke-width": 2,
           "circle-stroke-color": "#FFFFFF",
         },
@@ -246,7 +246,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         const markerElement = document.createElement("div");
         markerElement.className = "segment-marker";
         markerElement.style.cssText = `
-        background: #FF6B6B;
+        background: #EAF2D7;
         width: 24px;
         height: 24px;
         border-radius: 50%;
@@ -277,6 +277,28 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     },
     [onTrackpointClick]
   );
+
+  // Update segment markers when segments change (without reinitializing map)
+  useEffect(() => {
+    if (!map.current || !isMapLoaded || !activity.trackpoints) return;
+
+    const trackpoints = activity.trackpoints.filter(
+      (tp) => tp.latitude && tp.longitude
+    );
+    if (trackpoints.length === 0) return;
+
+    // Remove existing segment markers
+    const existingMarkers = document.querySelectorAll(".segment-marker");
+    existingMarkers.forEach((marker) => {
+      const parent = marker.parentElement;
+      if (parent && parent.classList.contains("mapboxgl-marker")) {
+        parent.remove();
+      }
+    });
+
+    // Add new segment markers
+    addSegmentMarkers(map.current, segments, trackpoints);
+  }, [segments, isMapLoaded, activity.trackpoints, addSegmentMarkers]);
 
   // Add click handler for trackpoint selection
   const addTrackpointClickHandler = useCallback(
@@ -319,27 +341,118 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     [onTrackpointClick]
   );
 
-  // Calculate bearing based on movement direction
-  const getBearing = useCallback(
-    (trackpoint: ActivityTrackpoint): number | null => {
-      if (!activity.trackpoints) return null;
+  // Simplify trackpoints using Ramer-Douglas-Peucker algorithm
+  const simplifyTrackpoints = useCallback(
+    (
+      trackpoints: ActivityTrackpoint[],
+      tolerance: number = 0.0001
+    ): ActivityTrackpoint[] => {
+      if (trackpoints.length <= 2) return trackpoints;
 
-      const trackpoints = activity.trackpoints.filter(
-        (tp) => tp.latitude && tp.longitude
+      // Find the point with maximum distance from line between first and last points
+      const firstPoint = trackpoints[0];
+      const lastPoint = trackpoints[trackpoints.length - 1];
+      let maxDistance = 0;
+      let maxIndex = 0;
+
+      for (let i = 1; i < trackpoints.length - 1; i++) {
+        const point = trackpoints[i];
+        if (!point.latitude || !point.longitude) continue;
+
+        // Calculate perpendicular distance from point to line
+        const distance = perpendicularDistance(
+          { lat: point.latitude, lng: point.longitude },
+          { lat: firstPoint.latitude!, lng: firstPoint.longitude! },
+          { lat: lastPoint.latitude!, lng: lastPoint.longitude! }
+        );
+
+        if (distance > maxDistance) {
+          maxDistance = distance;
+          maxIndex = i;
+        }
+      }
+
+      // If max distance is greater than tolerance, recursively simplify
+      if (maxDistance > tolerance) {
+        const leftPart = simplifyTrackpoints(
+          trackpoints.slice(0, maxIndex + 1),
+          tolerance
+        );
+        const rightPart = simplifyTrackpoints(
+          trackpoints.slice(maxIndex),
+          tolerance
+        );
+
+        // Combine results (remove duplicate point at junction)
+        return [...leftPart.slice(0, -1), ...rightPart];
+      } else {
+        // All points between first and last are within tolerance, just keep endpoints
+        return [firstPoint, lastPoint];
+      }
+    },
+    []
+  );
+
+  // Calculate perpendicular distance from point to line
+  const perpendicularDistance = (
+    point: { lat: number; lng: number },
+    lineStart: { lat: number; lng: number },
+    lineEnd: { lat: number; lng: number }
+  ): number => {
+    const A = point.lat - lineStart.lat;
+    const B = point.lng - lineStart.lng;
+    const C = lineEnd.lat - lineStart.lat;
+    const D = lineEnd.lng - lineStart.lng;
+
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+
+    if (lenSq === 0) return Math.sqrt(A * A + B * B);
+
+    const param = Math.max(0, Math.min(1, dot / lenSq));
+    const projection = {
+      lat: lineStart.lat + param * C,
+      lng: lineStart.lng + param * D,
+    };
+
+    const dx = point.lat - projection.lat;
+    const dy = point.lng - projection.lng;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Calculate smoothed bearing with lookahead
+  const getSmoothedBearing = useCallback(
+    (
+      trackpoints: ActivityTrackpoint[],
+      currentIndex: number,
+      lookahead: number = 5
+    ): number => {
+      if (trackpoints.length <= 1) return 0;
+
+      // Look ahead several points for more stable bearing calculation
+      const startIndex = Math.max(0, currentIndex - 1);
+      const endIndex = Math.min(
+        trackpoints.length - 1,
+        currentIndex + lookahead
       );
-      const currentIndex = trackpoints.findIndex((tp) => tp === trackpoint);
 
-      if (currentIndex < 0 || currentIndex >= trackpoints.length - 1)
-        return null;
+      const startPoint = trackpoints[startIndex];
+      const endPoint = trackpoints[endIndex];
 
-      const nextTrackpoint = trackpoints[currentIndex + 1];
-      if (!nextTrackpoint?.latitude || !nextTrackpoint?.longitude) return null;
+      if (
+        !startPoint?.latitude ||
+        !startPoint?.longitude ||
+        !endPoint?.latitude ||
+        !endPoint?.longitude
+      ) {
+        return 0;
+      }
 
-      // Calculate bearing between two points
-      const lat1 = (trackpoint.latitude! * Math.PI) / 180;
-      const lat2 = (nextTrackpoint.latitude * Math.PI) / 180;
+      // Calculate bearing between start and end points
+      const lat1 = (startPoint.latitude * Math.PI) / 180;
+      const lat2 = (endPoint.latitude * Math.PI) / 180;
       const deltaLng =
-        ((nextTrackpoint.longitude - trackpoint.longitude!) * Math.PI) / 180;
+        ((endPoint.longitude - startPoint.longitude) * Math.PI) / 180;
 
       const y = Math.sin(deltaLng) * Math.cos(lat2);
       const x =
@@ -348,8 +461,41 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
 
       return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
     },
-    [activity.trackpoints]
+    []
   );
+
+  // Pre-compute simplified trackpoints for flyover
+  const simplifiedTrackpoints = useMemo(() => {
+    if (!activity.trackpoints) return [];
+
+    const validTrackpoints = activity.trackpoints.filter(
+      (tp) => tp.latitude && tp.longitude
+    );
+
+    if (validTrackpoints.length === 0) return [];
+
+    // Use different tolerance based on trackpoint density
+    const baseTolerance = 0.0001; // ~11 meters
+    const tolerance =
+      validTrackpoints.length > 1000 ? baseTolerance * 2 : baseTolerance;
+
+    const simplified = simplifyTrackpoints(validTrackpoints, tolerance);
+
+    // Ensure we have at least some points for a meaningful flyover
+    if (simplified.length < 10 && validTrackpoints.length >= 10) {
+      // If too aggressive, use a smaller tolerance
+      return simplifyTrackpoints(validTrackpoints, tolerance * 0.5);
+    }
+
+    return simplified;
+  }, [activity.trackpoints, simplifyTrackpoints]);
+
+  // Pre-compute smoothed bearings for simplified trackpoints
+  const trackpointBearings = useMemo(() => {
+    return simplifiedTrackpoints.map((_: ActivityTrackpoint, index: number) =>
+      getSmoothedBearing(simplifiedTrackpoints, index, 3)
+    );
+  }, [simplifiedTrackpoints, getSmoothedBearing]);
 
   // Show final overview of the entire course
   const showFinalView = useCallback(() => {
@@ -393,27 +539,114 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     }, 1000);
   }, [activity.trackpoints]);
 
-  // Update camera position for flyover effect
+  // Track initial flyover start
+  const hasStartedFlyover = useRef(false);
+  const isTransitioningToStart = useRef(false);
+
+  // Smooth transition to starting point
+  const flyToStartingPoint = useCallback(() => {
+    if (!map.current || simplifiedTrackpoints.length === 0)
+      return Promise.resolve();
+
+    const startTrackpoint = simplifiedTrackpoints[0];
+    if (!startTrackpoint.latitude || !startTrackpoint.longitude)
+      return Promise.resolve();
+
+    isTransitioningToStart.current = true;
+
+    return new Promise<void>((resolve) => {
+      const startOptions = {
+        center: [startTrackpoint.longitude!, startTrackpoint.latitude!] as [
+          number,
+          number
+        ],
+        zoom: 15,
+        pitch: 60,
+        bearing: trackpointBearings[0] || 0, // Use pre-computed smooth bearing
+        speed: 0.8,
+        curve: 1.4,
+        easing: (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+      };
+
+      map.current!.flyTo({
+        ...startOptions,
+        essential: true,
+      });
+
+      // Wait for transition to complete
+      setTimeout(() => {
+        isTransitioningToStart.current = false;
+        hasStartedFlyover.current = true;
+        resolve();
+      }, 2000); // 2 second transition to start
+    });
+  }, [simplifiedTrackpoints, trackpointBearings]);
+
+  // Update camera position for flyover effect with smooth transitions
   const updateCameraPosition = useCallback(
-    (trackpoint: ActivityTrackpoint) => {
-      if (!map.current || !trackpoint.latitude || !trackpoint.longitude) return;
+    (trackpointIndex: number) => {
+      if (!map.current || isTransitioningToStart.current) return;
+
+      // Map original trackpoint index to simplified trackpoint index
+      const simplifiedIndex = Math.floor(
+        (trackpointIndex /
+          Math.max(
+            1,
+            (activity.trackpoints?.filter((tp) => tp.latitude && tp.longitude)
+              .length || 1) - 1
+          )) *
+          Math.max(1, simplifiedTrackpoints.length - 1)
+      );
+
+      const trackpoint = simplifiedTrackpoints[simplifiedIndex];
+      if (!trackpoint?.latitude || !trackpoint?.longitude) return;
+
+      const bearing = trackpointBearings[simplifiedIndex] || 0;
 
       const cameraOptions = {
         center: [trackpoint.longitude, trackpoint.latitude] as [number, number],
-        zoom: 15, // Slightly zoomed out for better scenery visibility
-        pitch: 60, // Reduced pitch for better overview
-        bearing: getBearing(trackpoint) || 0,
+        zoom: 15,
+        pitch: 60,
+        bearing: bearing,
       };
 
-      // Smooth camera transition
-      map.current.easeTo({
+      // Use flyTo for smoother transitions instead of easeTo
+      map.current.flyTo({
         ...cameraOptions,
-        duration: 1000 / flyoverState.playbackSpeed,
-        easing: (t) => t,
+        speed: 1.2 / flyoverState.playbackSpeed, // Adjust speed based on playback rate
+        curve: 1.2, // Smooth curved path
+        easing: (t) => t, // Linear easing for consistent movement
+        essential: true,
       });
     },
-    [flyoverState.playbackSpeed, getBearing]
+    [
+      flyoverState.playbackSpeed,
+      simplifiedTrackpoints,
+      trackpointBearings,
+      activity.trackpoints,
+    ]
   );
+
+  // Handle flyover start with smooth transition to starting point
+  useEffect(() => {
+    if (!map.current || !isMapLoaded || !flyoverState.isPlaying) {
+      hasStartedFlyover.current = false;
+      return;
+    }
+
+    // If just started playing and haven't transitioned to start yet
+    if (
+      !hasStartedFlyover.current &&
+      flyoverState.currentTrackpointIndex === 0
+    ) {
+      flyToStartingPoint();
+    }
+  }, [
+    flyoverState.isPlaying,
+    flyoverState.currentTrackpointIndex,
+    isMapLoaded,
+    flyToStartingPoint,
+  ]);
 
   // Update progress indicator during flyover
   useEffect(() => {
@@ -427,7 +660,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     const currentTrackpoint = trackpoints[flyoverState.currentTrackpointIndex];
     if (!currentTrackpoint?.latitude || !currentTrackpoint?.longitude) return;
 
-    // Update progress point
+    // Update progress point (use original trackpoint for accurate progress visualization)
     const progressSource = map.current.getSource(
       "progress-point"
     ) as mapboxgl.GeoJSONSource;
@@ -445,9 +678,9 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
       });
     }
 
-    // Update camera position if playing
-    if (flyoverState.isPlaying) {
-      updateCameraPosition(currentTrackpoint);
+    // Update camera position if playing and after initial transition (use simplified trackpoints for smooth camera)
+    if (flyoverState.isPlaying && hasStartedFlyover.current) {
+      updateCameraPosition(flyoverState.currentTrackpointIndex);
     }
 
     // Check if we've reached a segment
@@ -470,6 +703,8 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
       flyoverState.isPlaying &&
       flyoverState.currentTrackpointIndex >= trackpoints.length - 1
     ) {
+      // Reset flyover state
+      hasStartedFlyover.current = false;
       // Show final overview
       showFinalView();
       if (onFlyoverEnd) {

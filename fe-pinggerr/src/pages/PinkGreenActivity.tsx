@@ -127,7 +127,7 @@ export function PinkGreenActivity({
   // Track download in the backend
   const trackDownload = async () => {
     try {
-      await fetch(`${config.workerUrl}/count-download`, {
+      await fetch(`${config.workerUrl}/count-pgs-download`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
