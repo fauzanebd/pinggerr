@@ -3,17 +3,23 @@ import { useRef, useEffect, useState } from "react";
 import { decode } from "@googlemaps/polyline-codec";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ActivityVisualizationProps } from "@/types/strava";
+import type { StravaActivity } from "@/types/strava";
 import { config } from "@/config/env";
 
 // Strava logo
 import stravaLogoWhite from "@/assets/api_logo_pwrdBy_strava_stack_white.svg";
 
-export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
+interface PinkGreenActivityProps {
+  activity: StravaActivity;
+  language: "en" | "id";
+  onDownload?: (imageUrl: string) => void;
+}
+
+export function PinkGreenActivity({
   activity,
-  onDownload,
   language,
-}) => {
+  onDownload,
+}: PinkGreenActivityProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const logoImageRef = useRef<HTMLImageElement | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -103,7 +109,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
     return `${kmh.toFixed(1)} km/h`;
   };
 
-  const formatElevation = (meters: number) => `${meters}m`;
+  const formatElevation = (meters: number) => `${meters.toFixed(2)} m`;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -448,10 +454,10 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-brand-pink">🎨</span>
             {language === "en"
-              ? "Activity Visualization"
-              : "Visualisasi Aktivitas"}
+              ? "Pink Green Activity Visualization"
+              : "Visualisasi Aktivitas Pink Green"}
             {/* Only show "View on Strava" link if activity has an ID (from Strava API, not TCX) */}
-            {activity.id && (
+            {/* {activity.id && (
               <a
                 href={`https://www.strava.com/activities/${activity.id}`}
                 target="_blank"
@@ -461,7 +467,7 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
               >
                 View on Strava
               </a>
-            )}
+            )} */}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -590,4 +596,4 @@ export const ActivityVisualization: React.FC<ActivityVisualizationProps> = ({
       </CardContent>
     </Card>
   );
-};
+}

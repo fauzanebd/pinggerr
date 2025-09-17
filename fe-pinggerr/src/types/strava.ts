@@ -120,14 +120,45 @@ export interface ActivityListProps {
   onSelectActivity: (activity: StravaActivity) => void;
 }
 
-export interface ActivityVisualizationProps {
-  activity: StravaActivity;
-  onDownload?: (imageUrl: string) => void;
-  language: "en" | "id";
-}
-
 export interface ShareDialogProps {
   activity: StravaActivity;
   imageUrl?: string;
   children: React.ReactNode;
+}
+
+/**
+ * 3D Stories specific types
+ */
+
+export interface ActivitySegment {
+  id: string;
+  name?: string;
+  description?: string;
+  startIndex: number; // index in trackpoints array
+  endIndex: number; // index in trackpoints array
+  videoFile?: File;
+  videoUrl?: string;
+  createdAt: Date;
+}
+
+export interface SegmentOverlayData {
+  segment: ActivitySegment;
+  currentProgress: number; // 0-1 progress through the segment
+  stats: {
+    distance: number;
+    pace?: string;
+    heartRate?: number;
+    elevation?: number;
+    speed?: number;
+    cadence?: number;
+    watts?: number;
+  };
+}
+
+export interface FlyoverState {
+  isPlaying: boolean;
+  currentTrackpointIndex: number;
+  playbackSpeed: number; // 1x, 2x, etc.
+  currentSegment?: ActivitySegment;
+  showingSegmentOverlay: boolean;
 }

@@ -17,7 +17,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AuthCallback } from "@/components/AuthCallback";
 import { ActivityList } from "@/components/ActivityList";
-import { ActivityVisualization } from "@/components/ActivityVisualization";
+import { PinggerrLayout } from "@/components/PinggerrLayout";
+import { PinkGreenActivity } from "@/pages/PinkGreenActivity";
+import { ThreeDStories } from "@/pages/ThreeDStories";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
 import { processTcxFromFile } from "@/lib/tcxParser";
 import type { StravaActivity } from "@/types/strava";
@@ -53,6 +55,8 @@ function MainApp() {
 
   const handleSelectActivity = (activity: StravaActivity) => {
     setSelectedActivity(activity);
+    // Navigate to default visualization (pinkgreen-activity)
+    navigate("/visualization/pinkgreen-activity");
   };
 
   const handleBackToList = () => {
@@ -81,6 +85,8 @@ function MainApp() {
       const stravaActivity = await processTcxFromFile(selectedFile);
       console.log("Processed TCX file:", stravaActivity);
       setSelectedActivity(stravaActivity);
+      // Navigate to default visualization (pinkgreen-activity)
+      navigate("/visualization/pinkgreen-activity");
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to process activity";
@@ -96,6 +102,69 @@ function MainApp() {
     );
   }
 
+  // If an activity is selected, show the visualization layout
+  if (selectedActivity) {
+    const currentVisualizationType = location.pathname.includes("3d-stories")
+      ? language === "en"
+        ? "3D Stories"
+        : "Cerita 3D"
+      : language === "en"
+      ? "PinkGreen Activity"
+      : "Aktivitas PinkGreen";
+
+    return (
+      <PinggerrLayout
+        activity={selectedActivity}
+        language={language}
+        isAuthenticated={isAuthenticated}
+        onBackToList={handleBackToList}
+        onLanguageChange={setLanguage}
+        currentVisualizationType={currentVisualizationType}
+      >
+        <Routes>
+          <Route
+            path="/visualization/pinkgreen-activity"
+            element={
+              <PinkGreenActivity
+                activity={selectedActivity}
+                language={language}
+                onDownload={(imageUrl) => {
+                  console.log("Image downloaded:", imageUrl);
+                }}
+              />
+            }
+          />
+          <Route
+            path="/visualization/3d-stories"
+            element={
+              <ThreeDStories
+                activity={selectedActivity}
+                language={language}
+                onDownload={(imageUrl) => {
+                  console.log("Image downloaded:", imageUrl);
+                }}
+              />
+            }
+          />
+          {/* Default redirect to pinkgreen activity */}
+          <Route
+            path="*"
+            element={
+              <PinkGreenActivity
+                activity={selectedActivity}
+                language={language}
+                onDownload={(imageUrl) => {
+                  console.log("Image downloaded:", imageUrl);
+                }}
+              />
+            }
+          />
+        </Routes>
+      </PinggerrLayout>
+    );
+  }
+
+  // Main page layout
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
@@ -112,8 +181,6 @@ function MainApp() {
             </Button>
           </div>
           <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-4">
-            {/* <span className="text-brand-pink">Pinggerr</span>{": "}
-            <span className="text-brand-green">Visualize and Share Your Activity</span> */}
             {language === "en"
               ? "Pinggerr: Visualize and Share Your Activity"
               : "Pinggerr: Visualisasikan dan Bagikan Aktivitas Anda"}
@@ -138,78 +205,7 @@ function MainApp() {
 
         {/* Main Content */}
         <div className="max-w-2xl mx-auto">
-          {selectedActivity ? (
-            // Show visualization for any selected activity (authenticated or TCX upload)
-            <div className="space-y-6">
-              {/* Back button */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      {isAuthenticated
-                        ? language === "en"
-                          ? "Connected to Strava"
-                          : "Terhubung ke Strava"
-                        : language === "en"
-                        ? "TCX File Processed"
-                        : "File TCX Diproses"}
-                      <Badge className="bg-brand-green text-white">
-                        {isAuthenticated
-                          ? language === "en"
-                            ? "Active"
-                            : "Aktif"
-                          : language === "en"
-                          ? "Local"
-                          : "Lokal"}
-                      </Badge>
-                    </div>
-                    <Button
-                      onClick={handleBackToList}
-                      variant="outline"
-                      size="sm"
-                      className="text-muted-foreground hover:text-foreground self-start sm:self-auto"
-                    >
-                      ←{" "}
-                      {isAuthenticated
-                        ? language === "en"
-                          ? "Back to activities"
-                          : "Kembali ke aktivitas"
-                        : language === "en"
-                        ? "Back to home"
-                        : "Kembali ke beranda"}
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-
-              {/* Show data source if not from API */}
-              {!isAuthenticated && (
-                <Card className="border-blue-200 bg-blue-50">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="text-center">
-                      <p className="text-blue-800 text-sm">
-                        <strong>
-                          📊{" "}
-                          {language === "en" ? "Data Source:" : "Sumber Data:"}
-                        </strong>{" "}
-                        {language === "en"
-                          ? "Activity data loaded from TCX export"
-                          : "Data aktivitas dimuat dari ekspor TCX"}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              <ActivityVisualization
-                activity={selectedActivity}
-                language={language}
-                onDownload={(imageUrl) => {
-                  console.log("Image downloaded:", imageUrl);
-                }}
-              />
-            </div>
-          ) : !isAuthenticated ? (
+          {!isAuthenticated ? (
             <Card>
               <CardHeader className="text-center">
                 <CardTitle className="flex items-center justify-center gap-2">
@@ -535,39 +531,6 @@ function MainApp() {
                         </>
                       )}
                     </div>
-
-                    {/* Test Example */}
-                    {/* <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-800 mb-2">
-                        <strong>🧪 Want to test first?</strong> Try our example
-                        TCX file:
-                      </p>
-                      <a
-                        href="/example.tcx"
-                        download="example_running_activity.tcx"
-                        className="inline-block px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                      >
-                        📥 Download Example TCX
-                      </a>
-                    </div> */}
-
-                    {/* Screenshot Placeholders */}
-                    {/* <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                        <div className="text-gray-500">
-                          <div className="text-2xl mb-2">📱</div>
-                          <div className="text-sm">Screenshot Placeholder</div>
-                          <div className="text-xs">Mobile Instructions</div>
-                        </div>
-                      </div>
-                      <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                        <div className="text-gray-500">
-                          <div className="text-2xl mb-2">💻</div>
-                          <div className="text-sm">Screenshot Placeholder</div>
-                          <div className="text-xs">Desktop Instructions</div>
-                        </div>
-                      </div>
-                    </div> */}
                   </div>
                 )}
               </CardContent>

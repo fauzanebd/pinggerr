@@ -23,4 +23,9 @@ export const config = {
     authUrl: "https://www.strava.com/oauth/authorize",
     scope: "read,activity:read_all",
   },
+
+  // Mapbox Configuration
+  mapbox: {
+    accessToken: import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || "",
+  },
 } as const;

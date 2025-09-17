@@ -47,10 +47,17 @@ export default {
 				return handleTrackDownload(request, env);
 			case '/stats':
 				return handleGetStats(request, env);
+			case '/count-map-load':
+				return handleTrackMapLoad(request, env);
+			case '/check-map-limit':
+				return handleCheckMapLimit(request, env);
 			case '/':
-				return new Response('Strava OAuth Worker - Endpoints: /exchange, /refresh, /count-download, /stats', {
-					headers: corsHeaders,
-				});
+				return new Response(
+					'Strava OAuth Worker - Endpoints: /exchange, /refresh, /count-download, /stats, /count-map-load, /check-map-limit',
+					{
+						headers: corsHeaders,
+					}
+				);
 			default:
 				return new Response('Not Found', {
 					status: 404,
@@ -264,6 +271,97 @@ async function handleGetStats(request: Request, env: Env): Promise<Response> {
 		);
 	} catch (error) {
 		console.error('Stats retrieval error:', error);
+		return new Response(JSON.stringify({ error: 'Internal server error' }), {
+			status: 500,
+			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+		});
+	}
+}
+
+/**
+ * Track a map load event by incrementing the monthly counter
+ */
+async function handleTrackMapLoad(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'POST') {
+		return new Response('Method not allowed', {
+			status: 405,
+			headers: corsHeaders,
+		});
+	}
+
+	try {
+		// Generate monthly key (YYYY-MM format)
+		const now = new Date();
+		const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+		const mapLoadCountKey = `map_loads_${monthKey}`;
+
+		// Get current count for this month, default to 0 if not exists
+		const currentCountString = await env.PINGGERR_PGS_DOWNLOAD_STATS.get(mapLoadCountKey);
+		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
+
+		// Increment and store the new count
+		const newCount = currentCount + 1;
+		await env.PINGGERR_PGS_DOWNLOAD_STATS.put(mapLoadCountKey, newCount.toString());
+
+		// Return the new count and monthly key
+		return new Response(
+			JSON.stringify({
+				success: true,
+				map_loads_this_month: newCount,
+				month_key: monthKey,
+			}),
+			{
+				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+			}
+		);
+	} catch (error) {
+		console.error('Map load tracking error:', error);
+		return new Response(JSON.stringify({ error: 'Internal server error' }), {
+			status: 500,
+			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+		});
+	}
+}
+
+/**
+ * Check if map loading is allowed (under 50,000 monthly limit)
+ */
+async function handleCheckMapLimit(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'GET') {
+		return new Response('Method not allowed', {
+			status: 405,
+			headers: corsHeaders,
+		});
+	}
+
+	try {
+		// Generate monthly key (YYYY-MM format)
+		const now = new Date();
+		const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+		const mapLoadCountKey = `map_loads_${monthKey}`;
+
+		// Get current count for this month, default to 0 if not exists
+		const currentCountString = await env.PINGGERR_PGS_DOWNLOAD_STATS.get(mapLoadCountKey);
+		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
+
+		const MONTHLY_LIMIT = 50000;
+		const canLoadMap = currentCount < MONTHLY_LIMIT;
+
+		// Return the limit check result
+		return new Response(
+			JSON.stringify({
+				can_load_map: canLoadMap,
+				map_loads_this_month: currentCount,
+				monthly_limit: MONTHLY_LIMIT,
+				remaining_loads: Math.max(0, MONTHLY_LIMIT - currentCount),
+				month_key: monthKey,
+			}),
+			{
+				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+			}
+		);
+	} catch (error) {
+		console.error('Map limit check error:', error);
 		return new Response(JSON.stringify({ error: 'Internal server error' }), {
 			status: 500,
 			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
