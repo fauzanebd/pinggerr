@@ -432,6 +432,12 @@ export function ThreeDStories({
                 m
               </span>
             </div>
+
+            {/* Trackpoint Info */}
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-400 mt-1">
+              <span>Path Points: {validTrackpoints.length}</span>
+              <span>Camera Points: Smoothed for stability</span>
+            </div>
           </div>
 
           {/* 3D Map */}

@@ -475,7 +475,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     if (validTrackpoints.length === 0) return [];
 
     // Use different tolerance based on trackpoint density
-    const baseTolerance = 0.0001; // ~11 meters
+    const baseTolerance = 0.0002; // ~11 meters
     const tolerance =
       validTrackpoints.length > 1000 ? baseTolerance * 2 : baseTolerance;
 
@@ -492,8 +492,13 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
 
   // Pre-compute smoothed bearings for simplified trackpoints
   const trackpointBearings = useMemo(() => {
+    console.log("length of original trackpoints", activity.trackpoints?.length);
+    console.log(
+      "length of simplified trackpoints",
+      simplifiedTrackpoints.length
+    );
     return simplifiedTrackpoints.map((_: ActivityTrackpoint, index: number) =>
-      getSmoothedBearing(simplifiedTrackpoints, index, 3)
+      getSmoothedBearing(simplifiedTrackpoints, index, 10)
     );
   }, [simplifiedTrackpoints, getSmoothedBearing]);
 
@@ -578,33 +583,70 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         isTransitioningToStart.current = false;
         hasStartedFlyover.current = true;
         resolve();
-      }, 2000); // 2 second transition to start
+      }, 0); // 1 second transition to start
     });
   }, [simplifiedTrackpoints, trackpointBearings]);
+
+  // Find interpolated bearing between simplified trackpoints for smoother transitions
+  const getInterpolatedBearing = useCallback(
+    (allTrackpoints: ActivityTrackpoint[], currentIndex: number): number => {
+      if (simplifiedTrackpoints.length === 0 || trackpointBearings.length === 0)
+        return 0;
+
+      // Calculate progress through the route (0 to 1)
+      const routeProgress =
+        currentIndex / Math.max(1, allTrackpoints.length - 1);
+
+      // Map progress to simplified trackpoint indices
+      const simplifiedProgress =
+        routeProgress * Math.max(1, simplifiedTrackpoints.length - 1);
+      const lowerIndex = Math.floor(simplifiedProgress);
+      const upperIndex = Math.min(
+        lowerIndex + 1,
+        trackpointBearings.length - 1
+      );
+
+      if (lowerIndex === upperIndex) {
+        return trackpointBearings[lowerIndex] || 0;
+      }
+
+      // Interpolate between bearings for smoother transitions
+      const t = simplifiedProgress - lowerIndex;
+      const bearing1 = trackpointBearings[lowerIndex] || 0;
+      const bearing2 = trackpointBearings[upperIndex] || 0;
+
+      // Handle bearing wrapping (shortest path between angles)
+      let diff = bearing2 - bearing1;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+
+      const interpolatedBearing = bearing1 + diff * t;
+      return ((interpolatedBearing % 360) + 360) % 360; // Normalize to 0-360
+    },
+    [simplifiedTrackpoints, trackpointBearings]
+  );
 
   // Update camera position for flyover effect with smooth transitions
   const updateCameraPosition = useCallback(
     (trackpointIndex: number) => {
       if (!map.current || isTransitioningToStart.current) return;
 
-      // Map original trackpoint index to simplified trackpoint index
-      const simplifiedIndex = Math.floor(
-        (trackpointIndex /
-          Math.max(
-            1,
-            (activity.trackpoints?.filter((tp) => tp.latitude && tp.longitude)
-              .length || 1) - 1
-          )) *
-          Math.max(1, simplifiedTrackpoints.length - 1)
-      );
+      const allTrackpoints =
+        activity.trackpoints?.filter((tp) => tp.latitude && tp.longitude) || [];
+      if (trackpointIndex >= allTrackpoints.length) return;
 
-      const trackpoint = simplifiedTrackpoints[simplifiedIndex];
-      if (!trackpoint?.latitude || !trackpoint?.longitude) return;
+      // Use original trackpoint for camera POSITION (follows progress circle exactly)
+      const currentTrackpoint = allTrackpoints[trackpointIndex];
+      if (!currentTrackpoint?.latitude || !currentTrackpoint?.longitude) return;
 
-      const bearing = trackpointBearings[simplifiedIndex] || 0;
+      // Use interpolated bearing from simplified trackpoints (prevents spinning, smoother transitions)
+      const bearing = getInterpolatedBearing(allTrackpoints, trackpointIndex);
 
       const cameraOptions = {
-        center: [trackpoint.longitude, trackpoint.latitude] as [number, number],
+        center: [currentTrackpoint.longitude, currentTrackpoint.latitude] as [
+          number,
+          number
+        ],
         zoom: 15,
         pitch: 60,
         bearing: bearing,
@@ -619,33 +661,43 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         essential: true,
       });
     },
-    [
-      flyoverState.playbackSpeed,
-      simplifiedTrackpoints,
-      trackpointBearings,
-      activity.trackpoints,
-    ]
+    [flyoverState.playbackSpeed, activity.trackpoints, getInterpolatedBearing]
   );
 
   // Handle flyover start with smooth transition to starting point
   useEffect(() => {
-    if (!map.current || !isMapLoaded || !flyoverState.isPlaying) {
-      hasStartedFlyover.current = false;
+    if (!map.current || !isMapLoaded) return;
+
+    if (!flyoverState.isPlaying) {
+      // Only reset hasStartedFlyover when we're at the beginning (true reset)
+      // Don't reset it during pause (mid-flyover)
+      if (flyoverState.currentTrackpointIndex === 0) {
+        hasStartedFlyover.current = false;
+      }
       return;
     }
 
-    // If just started playing and haven't transitioned to start yet
+    // If just started playing and we're at the beginning
     if (
       !hasStartedFlyover.current &&
       flyoverState.currentTrackpointIndex === 0
     ) {
       flyToStartingPoint();
+    } else if (
+      !hasStartedFlyover.current &&
+      flyoverState.currentTrackpointIndex > 0
+    ) {
+      // If resuming from middle of flyover, mark as started without transition
+      hasStartedFlyover.current = true;
+      // Immediately update camera to current position when resuming
+      updateCameraPosition(flyoverState.currentTrackpointIndex);
     }
   }, [
     flyoverState.isPlaying,
     flyoverState.currentTrackpointIndex,
     isMapLoaded,
     flyToStartingPoint,
+    updateCameraPosition,
   ]);
 
   // Update progress indicator during flyover

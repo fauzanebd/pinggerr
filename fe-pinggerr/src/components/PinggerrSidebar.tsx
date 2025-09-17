@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Palette } from "lucide-react";
+import { Palette, Layers3 } from "lucide-react";
 import PinggerrLogo from "@/assets/pinggerr_logo.svg";
 
 import {
@@ -31,16 +31,16 @@ const visualizationTypes = [
       id: "Visualisasi klasik pink & hijau",
     },
   },
-  // {
-  //   id: "3d-stories",
-  //   title: { en: "3D Stories", id: "Cerita 3D" },
-  //   path: "/visualization/3d-stories",
-  //   icon: Layers3,
-  //   description: {
-  //     en: "Immersive 3D activity stories",
-  //     id: "Cerita aktivitas 3D yang imersif",
-  //   },
-  // },
+  {
+    id: "3d-stories",
+    title: { en: "3D Stories", id: "Cerita 3D" },
+    path: "/visualization/3d-stories",
+    icon: Layers3,
+    description: {
+      en: "Immersive 3D activity stories",
+      id: "Cerita aktivitas 3D yang imersif",
+    },
+  },
 ];
 
 export function PinggerrSidebar({
