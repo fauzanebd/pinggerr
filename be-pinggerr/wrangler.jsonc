@@ -12,9 +12,9 @@
 	},
 	"kv_namespaces": [
 		{
-			"binding": "PINGGERR_PGS_DOWNLOAD_STATS",
-			"id": "99e1c454e5644227ba415e63a99cbd85",
-			"preview_id": "b62c588398264ebe9fc1346096036fe9"
+			"binding": "PINGGERR_STATS",
+			"id": "fa0134b5bc314b93bd11f4e9975b39c2",
+			"preview_id": "e6a715130a844e3d95de4292420afc48"
 		}
 	]
 	/**

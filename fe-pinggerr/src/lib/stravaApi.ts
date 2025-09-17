@@ -154,15 +154,28 @@ export class StravaApi {
     }
 
     const streamsParam = types.join(",");
-    const streams = await this.makeRequest<StravaStreamResponse[]>(
+    const streams = await this.makeRequest<
+      StravaStreamResponse[] | Record<string, StravaStreamResponse>
+    >(
       `/activities/${activityId}/streams?keys=${streamsParam}&key_by_type=true`
     );
 
     // Convert Strava streams to our trackpoint format
-    const streamsByType = streams.reduce((acc, stream) => {
-      acc[stream.type] = stream.data;
-      return acc;
-    }, {} as Record<string, number[] | number[][]>);
+    let streamsByType: Record<string, number[] | number[][]>;
+
+    if (Array.isArray(streams)) {
+      // Handle array response format (key_by_type=false)
+      streamsByType = streams.reduce((acc, stream) => {
+        acc[stream.type] = stream.data;
+        return acc;
+      }, {} as Record<string, number[] | number[][]>);
+    } else {
+      // Handle object response format (key_by_type=true)
+      streamsByType = Object.entries(streams).reduce((acc, [type, stream]) => {
+        acc[type] = stream.data;
+        return acc;
+      }, {} as Record<string, number[] | number[][]>);
+    }
 
     const timeData = (streamsByType.time as number[]) || [];
     const latlngData = (streamsByType.latlng as number[][]) || [];

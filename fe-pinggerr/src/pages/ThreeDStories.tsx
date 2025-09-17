@@ -7,6 +7,7 @@ import { SegmentCreator } from "@/components/SegmentCreator";
 import { SegmentManager } from "@/components/SegmentManager";
 import { FinalStatsOverlay } from "@/components/FinalStatsOverlay";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
+// import { use3dDownloadTracker } from "@/hooks/use3dDownloadTracker";
 import type {
   StravaActivity,
   ActivityTrackpoint,
@@ -26,6 +27,7 @@ export function ThreeDStories({
   onDownload: _onDownload,
 }: ThreeDStoriesProps) {
   const { stravaApi } = useStravaAuth();
+  // const { track3dDownload } = use3dDownloadTracker();
   const [enhancedActivity, setEnhancedActivity] =
     useState<StravaActivity>(activity);
   const [segments, setSegments] = useState<ActivitySegment[]>([]);
@@ -39,6 +41,29 @@ export function ThreeDStories({
     ) => void;
   } | null>(null);
 
+  // Calculate dynamic flyover duration based on activity length
+  const calculateFlyoverDuration = useCallback(
+    (activity: StravaActivity): number => {
+      if (!activity.elapsed_time) return 60; // Default 1 minute
+
+      const activityDurationMinutes = activity.elapsed_time / 60;
+
+      // If activity is shorter than 1 minute, keep actual duration
+      if (activityDurationMinutes < 1) {
+        return activity.elapsed_time;
+      }
+
+      // Activities 1-6 hours: 1 minute flyover
+      if (activityDurationMinutes <= 360) {
+        return 60; // 1 minute
+      }
+
+      // Activities > 6 hours: 2 minutes flyover
+      return 120; // 2 minutes
+    },
+    []
+  );
+
   // Flyover state
   const [flyoverState, setFlyoverState] = useState<FlyoverState>({
     isPlaying: false,
@@ -47,6 +72,16 @@ export function ThreeDStories({
     currentSegment: undefined,
     showingSegmentOverlay: false,
   });
+
+  // Calculate flyover duration and interval timing
+  const flyoverDuration = calculateFlyoverDuration(enhancedActivity);
+  const validTrackpoints =
+    enhancedActivity.trackpoints?.filter((tp) => tp.latitude && tp.longitude) ||
+    [];
+  const flyoverInterval =
+    validTrackpoints.length > 0
+      ? (flyoverDuration * 1000) / validTrackpoints.length
+      : 1000;
 
   const texts = {
     en: {
@@ -112,37 +147,35 @@ export function ThreeDStories({
     loadStreams();
   }, [activity.id, stravaApi, enhancedActivity.trackpoints]);
 
-  // Flyover animation loop
+  // Smooth flyover animation loop
   useEffect(() => {
-    if (!flyoverState.isPlaying || !enhancedActivity.trackpoints) return;
+    if (!flyoverState.isPlaying || validTrackpoints.length === 0) return;
 
-    const trackpoints = enhancedActivity.trackpoints.filter(
-      (tp) => tp.latitude && tp.longitude
-    );
-    if (trackpoints.length === 0) return;
+    const adjustedInterval = flyoverInterval / flyoverState.playbackSpeed;
 
     const interval = setInterval(() => {
       setFlyoverState((prev) => {
         const nextIndex = prev.currentTrackpointIndex + 1;
 
         // Stop at end
-        if (nextIndex >= trackpoints.length) {
+        if (nextIndex >= validTrackpoints.length) {
           return {
             ...prev,
             isPlaying: false,
-            currentTrackpointIndex: trackpoints.length - 1,
+            currentTrackpointIndex: validTrackpoints.length - 1,
           };
         }
 
         return { ...prev, currentTrackpointIndex: nextIndex };
       });
-    }, 1000 / flyoverState.playbackSpeed); // Adjust speed
+    }, adjustedInterval);
 
     return () => clearInterval(interval);
   }, [
     flyoverState.isPlaying,
     flyoverState.playbackSpeed,
-    enhancedActivity.trackpoints,
+    flyoverInterval,
+    validTrackpoints.length,
   ]);
 
   // Handle segment creation
@@ -370,7 +403,8 @@ export function ThreeDStories({
             <div className="flex justify-between text-sm text-gray-600 mb-1">
               <span>{t.progress}</span>
               <span>
-                {flyoverState.currentTrackpointIndex} / {trackpoints.length}
+                {flyoverState.currentTrackpointIndex} /{" "}
+                {validTrackpoints.length}
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -378,11 +412,25 @@ export function ThreeDStories({
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                 style={{
                   width: `${
-                    (flyoverState.currentTrackpointIndex / trackpoints.length) *
+                    (flyoverState.currentTrackpointIndex /
+                      validTrackpoints.length) *
                     100
                   }%`,
                 }}
               />
+            </div>
+            {/* Flyover Duration Info */}
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mt-1">
+              <span>
+                Flyover Duration: {Math.floor(flyoverDuration / 60)}:
+                {String(flyoverDuration % 60).padStart(2, "0")}
+              </span>
+              <span>
+                Activity:{" "}
+                {Math.floor((enhancedActivity.elapsed_time || 0) / 3600)}h{" "}
+                {Math.floor(((enhancedActivity.elapsed_time || 0) % 3600) / 60)}
+                m
+              </span>
             </div>
           </div>
 
@@ -401,7 +449,7 @@ export function ThreeDStories({
 
       {/* Segment Creation */}
       <SegmentCreator
-        trackpoints={trackpoints}
+        trackpoints={validTrackpoints}
         segments={segments}
         onSegmentCreate={handleSegmentCreate}
         language={language}
@@ -412,7 +460,7 @@ export function ThreeDStories({
       {segments.length > 0 && (
         <SegmentManager
           segments={segments}
-          trackpoints={trackpoints}
+          trackpoints={validTrackpoints}
           onSegmentUpdate={handleSegmentUpdate}
           onSegmentDelete={handleSegmentDelete}
           onSegmentPlay={handleSegmentPlay}
