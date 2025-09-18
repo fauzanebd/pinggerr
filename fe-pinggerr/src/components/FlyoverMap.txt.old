@@ -1,0 +1,969 @@
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import * as turf from "@turf/turf";
+import { config } from "@/config/env";
+import { useMapLoadGuard } from "@/hooks/useMapLoadGuard";
+import type {
+  StravaActivity,
+  ActivityTrackpoint,
+  ActivitySegment,
+  FlyoverState,
+} from "@/types/strava";
+
+interface FlyoverMapProps {
+  activity: StravaActivity;
+  segments?: ActivitySegment[];
+  flyoverState: FlyoverState;
+  onTrackpointClick?: (index: number, trackpoint: ActivityTrackpoint) => void;
+  onFlyoverEnd?: () => void;
+  onVideoExportStart?: () => void;
+  onVideoExportProgress?: (progress: number) => void;
+  onVideoExportComplete?: (videoBlob: Blob) => void;
+  onFlyToStartPointStart?: () => void; // Callback to pause parent timer during fly-to-starting-point
+  onFlyToStartPointEnd?: () => void; // Callback to resume parent timer after fly-to-starting-point
+  className?: string;
+  enableVideoExport?: boolean;
+  triggerVideoExport?: boolean;
+}
+
+export const FlyoverMap: React.FC<FlyoverMapProps> = ({
+  activity,
+  flyoverState,
+  onFlyoverEnd,
+  onFlyToStartPointStart,
+  onFlyToStartPointEnd,
+  className = "",
+}) => {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const {
+    canLoadMap,
+    trackMapLoad,
+    isLoading: isCheckingLimit,
+  } = useMapLoadGuard();
+
+  // Path and camera animation refs
+  const animationFrame = useRef<number | null>(null);
+  const pathDistance = useRef<number>(0);
+  const previousCameraPosition = useRef<{ lng: number; lat: number } | null>(
+    null
+  );
+
+  const validTrackpoints = useRef<ActivityTrackpoint[]>([]);
+
+  // Video export refs
+  // const mediaRecorder = useRef<MediaRecorder | null>(null);
+  // const recordedChunks = useRef<Blob[]>([]);
+  // const isRecording = useRef<boolean>(false);
+
+  // Linear interpolation function for smooth camera movement
+  const lerp = (start: number, end: number, amt: number): number => {
+    return (1 - amt) * start + amt * end;
+  };
+
+  // Calculate elevation gradient between trackpoints to detect steep terrain
+  const calculateElevationGradient = (
+    currentIndex: number,
+    trackpoints: ActivityTrackpoint[]
+  ): number => {
+    if (currentIndex === 0) return 0;
+
+    const current = trackpoints[currentIndex];
+    const previous = trackpoints[currentIndex - 1];
+
+    if (
+      !current?.altitude ||
+      !previous?.altitude ||
+      !current?.latitude ||
+      !current?.longitude ||
+      !previous?.latitude ||
+      !previous?.longitude
+    ) {
+      return 0;
+    }
+
+    // Calculate distance between points using turf
+    const currentPoint = turf.point([current.longitude, current.latitude]);
+    const previousPoint = turf.point([previous.longitude, previous.latitude]);
+    const distance = turf.distance(currentPoint, previousPoint, {
+      units: "meters",
+    });
+
+    if (distance === 0) return 0;
+
+    const elevationChange = Math.abs(current.altitude - previous.altitude);
+    return elevationChange / distance; // Returns gradient as rise/run
+  };
+
+  // Get adaptive smoothing factor based on elevation gradient (more conservative)
+  const getAdaptiveSmoothingFactor = (gradient: number): number => {
+    // Base smoothing factor
+    const baseSmoothingFactor = 0.15;
+
+    // More conservative smoothing - only for very steep terrain
+    if (gradient > 0.25) return 0.3; // Very steep terrain only
+    if (gradient > 0.15) return 0.22; // Moderate increase
+    if (gradient > 0.1) return 0.18; // Small increase
+
+    return baseSmoothingFactor; // Default smoothing
+  };
+
+  // Compute camera position based on target position, pitch, bearing, and altitude
+  const computeCameraPosition = (
+    pitch: number,
+    bearing: number,
+    targetPosition: { lng: number; lat: number },
+    altitude: number,
+    smooth: boolean = true,
+    customSmoothingFactor?: number
+  ) => {
+    const bearingInRadian = bearing / 57.29;
+    const pitchInRadian = (90 - pitch) / 57.29;
+
+    const lngDiff =
+      ((altitude / Math.tan(pitchInRadian)) * Math.sin(-bearingInRadian)) /
+      70000; // ~70km/degree longitude
+
+    const latDiff =
+      ((altitude / Math.tan(pitchInRadian)) * Math.cos(-bearingInRadian)) /
+      110000; // 110km/degree latitude
+
+    const correctedLng = targetPosition.lng + lngDiff;
+    const correctedLat = targetPosition.lat - latDiff;
+
+    let newCameraPosition = {
+      lng: correctedLng,
+      lat: correctedLat,
+    };
+
+    // Apply smoothing with LERP if enabled and we have a previous position
+    if (smooth && previousCameraPosition.current) {
+      const smoothingFactor = customSmoothingFactor || 0.1; // Use custom factor if provided
+      newCameraPosition = {
+        lng: lerp(
+          previousCameraPosition.current.lng,
+          correctedLng,
+          smoothingFactor
+        ),
+        lat: lerp(
+          previousCameraPosition.current.lat,
+          correctedLat,
+          smoothingFactor
+        ),
+      };
+    }
+
+    previousCameraPosition.current = newCameraPosition;
+    return newCameraPosition;
+  };
+
+  // Effect: Initialize map
+  useEffect(() => {
+    if (!mapContainer.current || map.current || !canLoadMap || isCheckingLimit)
+      return;
+
+    const initializeMap = async () => {
+      try {
+        // Track map load
+        await trackMapLoad();
+
+        // Set Mapbox access token
+        mapboxgl.accessToken = config.mapbox.accessToken;
+
+        if (!config.mapbox.accessToken) {
+          throw new Error("Mapbox access token is required");
+        }
+
+        // Calculate bounds from trackpoints
+        const trackpoints = activity.trackpoints || [];
+        if (trackpoints.length === 0) {
+          throw new Error("No GPS data available for 3D visualization");
+        }
+
+        validTrackpoints.current = trackpoints.filter(
+          (tp) => tp.latitude && tp.longitude
+        );
+        if (validTrackpoints.current.length === 0) {
+          throw new Error("No valid GPS coordinates found");
+        }
+
+        const bounds = new mapboxgl.LngLatBounds();
+        validTrackpoints.current.forEach((tp) => {
+          if (tp.latitude && tp.longitude) {
+            bounds.extend([tp.longitude, tp.latitude]);
+          }
+        });
+
+        // Initialize map with 3D terrain
+        const mapInstance = new mapboxgl.Map({
+          container: mapContainer.current!,
+          style: "mapbox://styles/mapbox/satellite-v9",
+          center: bounds.getCenter(),
+          zoom: 10,
+          pitch: 60,
+          bearing: 0,
+          antialias: true,
+        });
+
+        map.current = mapInstance;
+
+        mapInstance.on("load", () => {
+          // Add terrain source and layer
+          mapInstance.addSource("mapbox-dem", {
+            type: "raster-dem",
+            url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+            tileSize: 512,
+            maxzoom: 14,
+          });
+
+          mapInstance.setTerrain({ source: "mapbox-dem" });
+
+          // Add sky layer for better 3D effect
+          mapInstance.addLayer({
+            id: "sky",
+            type: "sky",
+            paint: {
+              "sky-type": "atmosphere",
+              "sky-atmosphere-sun": [0.0, 0.0],
+              "sky-atmosphere-sun-intensity": 15,
+            },
+          });
+
+          // Add GPS path
+          addGpsPath(mapInstance, validTrackpoints.current);
+
+          // Fit to bounds with padding
+          mapInstance.fitBounds(bounds, {
+            padding: 50,
+            pitch: 60,
+            bearing: 0,
+          });
+
+          setIsMapLoaded(true);
+        });
+
+        mapInstance.on("error", (e) => {
+          console.error("Map error:", e);
+          setMapError("Failed to load map");
+        });
+      } catch (error) {
+        console.error("Map initialization error:", error);
+        setMapError(
+          error instanceof Error ? error.message : "Failed to initialize map"
+        );
+      }
+    };
+
+    initializeMap();
+
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+      if (animationFrame.current) {
+        cancelAnimationFrame(animationFrame.current);
+      }
+
+      // Reset all state when unmounting
+      hasStartedFlyover.current = false;
+      isTransitioningToStart.current = false;
+      pathDistance.current = 0;
+      previousCameraPosition.current = null;
+    };
+  }, [canLoadMap, isCheckingLimit, activity.trackpoints, trackMapLoad]);
+
+  // Add GPS path to map with progressive line gradient animation
+  const addGpsPath = useCallback(
+    (mapInstance: mapboxgl.Map, trackpoints: ActivityTrackpoint[]) => {
+      const coordinates = trackpoints.map((tp) => [
+        tp.longitude!,
+        tp.latitude!,
+      ]);
+
+      if (coordinates.length === 0) return;
+
+      // Calculate and store total path distance using turf.js
+      const lineString = turf.lineString(coordinates);
+      const calculatedDistance = turf.length(lineString, {
+        units: "kilometers",
+      });
+      pathDistance.current = calculatedDistance;
+      console.log("Path distance calculated:", calculatedDistance, "km");
+
+      // Add path source
+      mapInstance.addSource("gps-path", {
+        type: "geojson",
+        lineMetrics: true, // Enable line-progress for gradient animations
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates,
+          },
+        },
+      });
+
+      // Add animated path layer with gradient
+      mapInstance.addLayer({
+        id: "gps-path-line",
+        type: "line",
+        source: "gps-path",
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-color": "#F99FD2",
+          "line-width": 4,
+          "line-opacity": 0.8,
+          // Progressive line gradient - initially transparent
+          "line-gradient": [
+            "step",
+            ["line-progress"],
+            "#F99FD2", // Color for revealed portion
+            0, // Start at 0 progress
+            "rgba(0, 0, 0, 0)", // Transparent for unrevealed portion
+          ],
+        },
+      });
+
+      // Add background path layer (dimmed full route)
+      mapInstance.addLayer(
+        {
+          id: "gps-path-background",
+          type: "line",
+          source: "gps-path",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": "#F99FD2",
+            "line-width": 2,
+            "line-opacity": 0.3,
+          },
+        },
+        "gps-path-line"
+      ); // Add below the animated line
+
+      // Add progress indicator
+      mapInstance.addSource("progress-point", {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "Point",
+            coordinates: coordinates[0],
+          },
+        },
+      });
+
+      mapInstance.addLayer({
+        id: "progress-point-layer",
+        type: "circle",
+        source: "progress-point",
+        paint: {
+          "circle-radius": 8,
+          "circle-color": "#165027",
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#FFFFFF",
+        },
+      });
+    },
+    []
+  );
+
+  // Show final overview of the entire course
+  const showFinalView = useCallback(
+    (validTrackpoints: ActivityTrackpoint[]) => {
+      if (!map.current || !validTrackpoints) return;
+
+      if (validTrackpoints.length === 0) return;
+
+      // Calculate bounds for the entire course
+      const bounds = new mapboxgl.LngLatBounds();
+      validTrackpoints.forEach((tp) => {
+        if (tp.latitude && tp.longitude) {
+          bounds.extend([tp.longitude, tp.latitude]);
+        }
+      });
+
+      // Fly to overview of entire course
+      map.current.flyTo({
+        center: bounds.getCenter(),
+        zoom: Math.max(10, map.current.getZoom() - 3), // Zoom out to show more context
+        pitch: 0, // Top-down view
+        bearing: 0, // North-up orientation
+        speed: 0.8, // Smooth transition
+        curve: 1.2, // Curved flyover path
+        easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t), // Ease in-out
+        essential: true,
+      });
+
+      // Fit bounds to show entire course with padding
+      setTimeout(() => {
+        if (map.current) {
+          map.current.fitBounds(bounds, {
+            padding: 100,
+            pitch: 0,
+            bearing: 0,
+            duration: 2000,
+          });
+        }
+      }, 1000);
+    },
+    [validTrackpoints.current]
+  );
+
+  // Track initial flyover start
+  const hasStartedFlyover = useRef(false);
+  const isTransitioningToStart = useRef(false);
+
+  // Transition to starting point using the same camera computation as other trackpoints
+  const flyToStartingPoint = useCallback(
+    async (validTrackpoints: ActivityTrackpoint[]) => {
+      if (!map.current || !validTrackpoints?.length) return Promise.resolve();
+
+      if (validTrackpoints.length === 0) return Promise.resolve();
+
+      const startTrackpoint = validTrackpoints[0];
+      if (!startTrackpoint.latitude || !startTrackpoint.longitude)
+        return Promise.resolve();
+
+      console.log("Starting flyover with computed camera position");
+
+      // Notify parent to pause the timer during fly-to-starting-point
+      if (onFlyToStartPointStart) {
+        console.log("Calling onFlyToStartPointStart to pause parent timer");
+        onFlyToStartPointStart();
+      }
+
+      // Get current camera state for debugging
+      const currentCenter = map.current!.getCenter();
+      const currentZoom = map.current!.getZoom();
+      const currentPitch = map.current!.getPitch();
+      const currentBearing = map.current!.getBearing();
+
+      console.log("Current camera state:", {
+        center: [currentCenter.lng, currentCenter.lat],
+        zoom: currentZoom,
+        pitch: currentPitch,
+        bearing: currentBearing,
+      });
+
+      // Calculate bearing for starting point using same logic as updateCameraPosition
+      const startBearing = 0; // Initial bearing like in updateCameraPosition
+      const animationPhase = 0; // Starting point = 0% through animation
+      const bearing = startBearing - animationPhase * 200.0; // Same formula as updateCameraPosition
+
+      // Use stable pitch for starting point
+      const pitch = 60;
+      const altitude = 1000; // meters above ground
+
+      // Use the same computeCameraPosition function as other trackpoints
+      const targetPosition = {
+        lng: startTrackpoint.longitude,
+        lat: startTrackpoint.latitude,
+      };
+
+      console.log("Target starting position:", targetPosition);
+      console.log("Target camera settings:", { pitch, bearing, zoom: 15 });
+
+      const cameraPosition = computeCameraPosition(
+        pitch,
+        bearing,
+        targetPosition,
+        altitude,
+        false // No smoothing for initial position
+      );
+
+      console.log("Computed camera position:", cameraPosition);
+
+      // Validate camera position
+      if (
+        isNaN(cameraPosition.lng) ||
+        isNaN(cameraPosition.lat) ||
+        !isFinite(cameraPosition.lng) ||
+        !isFinite(cameraPosition.lat)
+      ) {
+        console.warn(
+          "Invalid camera position for starting point",
+          cameraPosition
+        );
+        return Promise.resolve();
+      }
+
+      // Move to starting position using computed camera position with smooth animation
+      try {
+        console.log("Starting flyTo animation...");
+
+        // Create a promise that resolves when the flyTo animation completes
+        await new Promise<void>((resolve) => {
+          let resolved = false;
+
+          const handleMoveEnd = () => {
+            if (!resolved) {
+              resolved = true;
+              map.current?.off("moveend", handleMoveEnd);
+              console.log("flyTo animation completed (moveend)");
+              resolve();
+            }
+          };
+
+          // Add timeout to prevent hanging
+          const timeout = setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              map.current?.off("moveend", handleMoveEnd);
+              console.log("flyTo animation timeout - proceeding anyway");
+              resolve();
+            }
+          }, 5000); // 5 second timeout
+
+          map.current?.on("moveend", handleMoveEnd);
+
+          const flyToOptions = {
+            center: [targetPosition.lng, targetPosition.lat] as [
+              number,
+              number
+            ],
+            zoom: 15,
+            pitch: pitch,
+            bearing: bearing,
+            duration: 2000, // Use duration instead of speed for more control
+            easing: (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t), // Ease in-out
+            essential: true,
+          };
+
+          console.log("flyTo options:", flyToOptions);
+          map.current!.flyTo(flyToOptions);
+
+          // Clean up timeout when promise resolves
+          Promise.resolve().then(() => {
+            if (resolved) {
+              clearTimeout(timeout);
+            }
+          });
+        });
+
+        console.log("flyTo completed, adding settling delay...");
+        // Add a small delay to ensure the animation has fully settled
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        console.log("Ready to start flyover!");
+      } catch (error) {
+        console.error("Error moving to start:", error);
+        // Make sure to resume timer even on error
+        if (onFlyToStartPointEnd) {
+          console.log(
+            "Calling onFlyToStartPointEnd after error to resume parent timer"
+          );
+          onFlyToStartPointEnd();
+        }
+      }
+
+      // Mark as started only after the fly-to animation completes
+      console.log(
+        "Setting transition states: isTransitioningToStart = false, hasStartedFlyover = true"
+      );
+      isTransitioningToStart.current = false;
+      hasStartedFlyover.current = true;
+
+      console.log(
+        "Transition complete! flyToStartingPoint finished successfully."
+      );
+
+      // Notify parent to resume the timer after fly-to-starting-point
+      if (onFlyToStartPointEnd) {
+        console.log("Calling onFlyToStartPointEnd to resume parent timer");
+        onFlyToStartPointEnd();
+      }
+
+      return Promise.resolve();
+    },
+    [onFlyToStartPointStart, onFlyToStartPointEnd]
+  );
+
+  // Update camera position using turf.js and FreeCamera API
+  const updateCameraPosition = useCallback(
+    (trackpointIndex: number, validTrackpoints: ActivityTrackpoint[]) => {
+      // Debug: Log all conditions
+      const hasMap = !!map.current;
+      const pathDist = pathDistance.current;
+
+      if (!hasMap || pathDist === 0 || !pathDist || isNaN(pathDist)) {
+        console.warn("Cannot update camera position", {
+          hasMap,
+          pathDistance: pathDist,
+          trackpointIndex,
+        });
+        return;
+      }
+
+      if (trackpointIndex >= validTrackpoints.length) return;
+
+      const animationPhase = trackpointIndex / (validTrackpoints.length - 1);
+
+      // Calculate elevation gradient for terrain-aware camera movement
+      const elevationGradient = calculateElevationGradient(
+        trackpointIndex,
+        validTrackpoints
+      );
+      const adaptiveSmoothingFactor =
+        getAdaptiveSmoothingFactor(elevationGradient);
+
+      // Update line gradient to reveal the path progressively
+      if (map.current) {
+        map.current.setPaintProperty("gps-path-line", "line-gradient", [
+          "step",
+          ["line-progress"],
+          "#F99FD2", // Pink color for revealed portion
+          animationPhase,
+          "rgba(0, 0, 0, 0)", // Transparent for unrevealed portion
+        ]);
+      }
+
+      // Use turf.js to get position along the path
+      const coordinates = validTrackpoints.map((tp) => [
+        tp.longitude!,
+        tp.latitude!,
+      ]);
+
+      if (coordinates.length < 2) {
+        console.warn("Not enough coordinates for path calculation");
+        return;
+      }
+
+      const pathLineString = turf.lineString(coordinates);
+      const currentDistance = pathDistance.current * animationPhase;
+
+      // Get the leading edge position using turf.along
+      const leadingEdgePoint = turf.along(pathLineString, currentDistance, {
+        units: "kilometers",
+      });
+
+      // Validate coordinates exist
+      if (
+        !leadingEdgePoint ||
+        !leadingEdgePoint.geometry ||
+        !leadingEdgePoint.geometry.coordinates ||
+        leadingEdgePoint.geometry.coordinates.length < 2
+      ) {
+        console.warn("Invalid coordinates from turf.along", {
+          currentDistance,
+          pathDistance: pathDistance.current,
+          animationPhase,
+        });
+        return;
+      }
+
+      const [lng, lat] = leadingEdgePoint.geometry.coordinates;
+
+      // Calculate bearing with rotation effect (as per Mapbox docs)
+      const startBearing = 0; // Initial bearing
+      const bearing = startBearing - animationPhase * 200.0; // Cinematic rotation
+
+      // Camera settings - stable pitch throughout flyover
+      const pitch = 60; // Constant stable pitch
+      const altitude = 1000; // meters above ground
+
+      // Debug steep terrain detection (reduce frequency)
+      if (elevationGradient > 0.15 && trackpointIndex % 10 === 0) {
+        console.log(
+          `Steep terrain at trackpoint ${trackpointIndex}: gradient=${elevationGradient.toFixed(
+            3
+          )}, smoothing=${adaptiveSmoothingFactor}`
+        );
+      }
+
+      // Validate lng/lat values
+      if (isNaN(lng) || isNaN(lat) || !isFinite(lng) || !isFinite(lat)) {
+        console.warn("Invalid lng/lat values", { lng, lat });
+        return;
+      }
+
+      // Calculate camera position using trigonometry with adaptive smoothing
+      const targetPosition = { lng, lat };
+      const cameraPosition = computeCameraPosition(
+        pitch,
+        bearing,
+        targetPosition,
+        altitude,
+        true,
+        adaptiveSmoothingFactor
+      );
+
+      // Validate camera position
+      if (
+        isNaN(cameraPosition.lng) ||
+        isNaN(cameraPosition.lat) ||
+        !isFinite(cameraPosition.lng) ||
+        !isFinite(cameraPosition.lat)
+      ) {
+        console.warn("Invalid camera position", cameraPosition);
+        return;
+      }
+
+      try {
+        // Calculate adaptive animation duration based on terrain steepness (more conservative)
+        const getAdaptiveDuration = (gradient: number): number => {
+          if (gradient > 0.3) return 150; // Very steep - moderately slower
+          if (gradient > 0.2) return 130; // Steep - slightly slower
+          if (gradient > 0.15) return 115; // Moderate - small adjustment
+          return 100; // Flat terrain - normal speed
+        };
+
+        const adaptiveDuration = getAdaptiveDuration(elevationGradient);
+
+        // Use adaptive easeTo method with terrain-aware settings
+        if (map.current) {
+          map.current.easeTo({
+            center: [lng, lat],
+            zoom: 15,
+            pitch: 60, // Stable pitch throughout flyover
+            bearing: bearing,
+            duration: adaptiveDuration, // Adaptive duration based on terrain
+            easing:
+              elevationGradient > 0.1
+                ? (t) => t * t * (3.0 - 2.0 * t) // Smooth step easing for steep terrain
+                : (t) => t, // Linear easing for flat terrain
+          });
+        }
+      } catch (error) {
+        console.error("Error setting camera position:", error);
+      }
+
+      // Update progress indicator position
+      if (map.current) {
+        const progressSource = map.current.getSource(
+          "progress-point"
+        ) as mapboxgl.GeoJSONSource;
+        if (progressSource) {
+          progressSource.setData({
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "Point",
+              coordinates: [lng, lat],
+            },
+          });
+        }
+      }
+    },
+    []
+  );
+
+  // Handle flyover start with smooth transition to starting point
+  useEffect(() => {
+    if (!map.current || !isMapLoaded) return;
+
+    if (!flyoverState.isPlaying) {
+      // Only reset hasStartedFlyover when we're at the beginning (true reset)
+      // Don't reset it during pause (mid-flyover)
+      if (flyoverState.currentTrackpointIndex === 0) {
+        hasStartedFlyover.current = false;
+        // Also reset transition state when stopping
+        isTransitioningToStart.current = false;
+      }
+      return;
+    }
+
+    // If just started playing and we're at the beginning
+    if (
+      !hasStartedFlyover.current &&
+      flyoverState.currentTrackpointIndex === 0 &&
+      !isTransitioningToStart.current
+    ) {
+      console.log("Starting flyover from beginning - setting up transition");
+      isTransitioningToStart.current = true; // Block other updates during transition
+      flyToStartingPoint(validTrackpoints.current).catch((error) => {
+        console.error("Error in flyToStartingPoint:", error);
+        // Reset states on error
+        isTransitioningToStart.current = false;
+        hasStartedFlyover.current = false;
+        // Make sure to resume timer even on error
+        if (onFlyToStartPointEnd) {
+          console.log(
+            "Calling onFlyToStartPointEnd after flyToStartingPoint error"
+          );
+          onFlyToStartPointEnd();
+        }
+      });
+    } else if (
+      !hasStartedFlyover.current &&
+      flyoverState.currentTrackpointIndex > 0 &&
+      !isTransitioningToStart.current
+    ) {
+      // If resuming from middle of flyover, mark as started without transition
+      console.log(
+        "Resuming flyover from trackpoint:",
+        flyoverState.currentTrackpointIndex
+      );
+      hasStartedFlyover.current = true;
+      // Immediately update camera to current position when resuming
+      updateCameraPosition(
+        flyoverState.currentTrackpointIndex,
+        validTrackpoints.current
+      );
+    }
+  }, [
+    validTrackpoints.current,
+    flyoverState.isPlaying,
+    flyoverState.currentTrackpointIndex,
+    isMapLoaded,
+    flyToStartingPoint,
+    updateCameraPosition,
+    onFlyToStartPointEnd,
+  ]);
+
+  // Update camera and progress indicator during flyover
+  useEffect(() => {
+    if (!map.current || !isMapLoaded || !validTrackpoints.current) return;
+
+    if (validTrackpoints.current.length === 0) return;
+
+    const currentTrackpoint =
+      validTrackpoints.current[flyoverState.currentTrackpointIndex];
+    if (!currentTrackpoint?.latitude || !currentTrackpoint?.longitude) return;
+
+    // Update progress point (use original trackpoint for accurate progress visualization)
+    // const progressSource = map.current.getSource(
+    //   "progress-point"
+    // ) as mapboxgl.GeoJSONSource;
+    // if (progressSource) {
+    //   progressSource.setData({
+    //     type: "Feature",
+    //     properties: {},
+    //     geometry: {
+    //       type: "Point",
+    //       coordinates: [
+    //         currentTrackpoint.longitude,
+    //         currentTrackpoint.latitude,
+    //       ],
+    //     },
+    //   });
+    // }
+
+    // Update camera position if playing and after initial transition
+    if (
+      flyoverState.isPlaying &&
+      hasStartedFlyover.current &&
+      !isTransitioningToStart.current
+    ) {
+      console.log(
+        "Updating camera position for trackpoint:",
+        flyoverState.currentTrackpointIndex
+      );
+      updateCameraPosition(
+        flyoverState.currentTrackpointIndex,
+        validTrackpoints.current
+      );
+    } else if (flyoverState.isPlaying && !hasStartedFlyover.current) {
+      console.log("Flyover is playing but not started yet", {
+        isTransitioning: isTransitioningToStart.current,
+        hasStarted: hasStartedFlyover.current,
+      });
+    } else if (flyoverState.isPlaying && isTransitioningToStart.current) {
+      console.log("Flyover is transitioning to starting point, waiting...", {
+        trackpointIndex: flyoverState.currentTrackpointIndex,
+        isTransitioning: isTransitioningToStart.current,
+        hasStarted: hasStartedFlyover.current,
+      });
+    }
+
+    // Check if flyover has ended
+    if (
+      flyoverState.isPlaying &&
+      flyoverState.currentTrackpointIndex >= validTrackpoints.current.length - 1
+    ) {
+      // Reset flyover state
+      hasStartedFlyover.current = false;
+      // Show final overview
+      showFinalView(validTrackpoints.current);
+      if (onFlyoverEnd) {
+        onFlyoverEnd();
+      }
+    }
+  }, [
+    flyoverState.currentTrackpointIndex,
+    flyoverState.isPlaying,
+    isMapLoaded,
+    validTrackpoints.current,
+    onFlyoverEnd,
+    flyoverState.currentSegment,
+    showFinalView,
+    updateCameraPosition,
+  ]);
+
+  // Render loading state
+  if (isCheckingLimit) {
+    return (
+      <div
+        className={`flex items-center justify-center min-h-[400px] bg-gray-100 rounded-lg ${className}`}
+      >
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-gray-600">Checking map availability...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render limit exceeded state
+  if (!canLoadMap) {
+    return (
+      <div
+        className={`flex items-center justify-center min-h-[400px] bg-red-50 border border-red-200 rounded-lg ${className}`}
+      >
+        <div className="text-center p-6">
+          <div className="text-red-600 text-4xl mb-4">🚫</div>
+          <h3 className="text-lg font-semibold text-red-800 mb-2">
+            Map Unavailable
+          </h3>
+          <p className="text-red-700 max-w-md">
+            Cannot load map right now. Monthly limit reached. Please wait until
+            next month.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render error state
+  if (mapError) {
+    return (
+      <div
+        className={`flex items-center justify-center min-h-[400px] bg-red-50 border border-red-200 rounded-lg ${className}`}
+      >
+        <div className="text-center p-6">
+          <div className="text-red-600 text-4xl mb-4">⚠️</div>
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Map Error</h3>
+          <p className="text-red-700">{mapError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative ${className}`}>
+      <div
+        ref={mapContainer}
+        className="w-full h-full min-h-[400px] rounded-lg overflow-hidden"
+        style={{ minHeight: "500px" }}
+      />
+      {!isMapLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-gray-600">Loading 3D terrain...</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
