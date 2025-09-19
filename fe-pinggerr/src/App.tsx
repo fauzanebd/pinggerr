@@ -212,48 +212,68 @@ function MainApp() {
         {/* Main Content */}
         <div className="max-w-2xl mx-auto">
           {!isAuthenticated ? (
-            <Card>
-              <CardHeader className="text-center">
-                <CardTitle className="flex items-center justify-center gap-2">
-                  {language === "en"
-                    ? "Connect to Import Your Activities"
-                    : "Hubungkan untuk Mengimpor Aktivitas Anda"}
-                </CardTitle>
-                <CardDescription>
-                  {language === "en"
-                    ? "Connect your account to generate beautiful visualizations of your recent activities"
-                    : "Hubungkan akun Anda untuk membuat visualisasi yang indah dari aktivitas terbaru Anda"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <button
-                  onClick={login}
-                  className="transition-transform hover:scale-105 active:scale-95"
-                >
-                  <img
-                    src={StravaConnectButton}
-                    alt="Connect with Strava"
-                    className="h-12 w-auto mx-auto"
-                  />
-                </button>
-
-                {/* TCX File Upload Option */}
-                <div className="mt-4 p-3 sm:p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                  <p className="text-sm text-orange-800 leading-relaxed mb-3">
-                    <strong>
-                      🚀{" "}
-                      {language === "en"
-                        ? "Alternative Option (No Login to Strava):"
-                        : "Opsi Alternatif (Tanpa Login ke Strava):"}
-                    </strong>{" "}
+            <div className="space-y-6">
+              {/* Upload Options Header */}
+              <Card>
+                <CardHeader className="text-center">
+                  <CardTitle className="flex items-center justify-center gap-2">
                     {language === "en"
-                      ? "Strava has not approved my app for a bigger limit for public API yet, but you can still create beautiful visualizations! Download your activity's TCX file from Strava and upload it here."
-                      : "Strava belum menyetujui aplikasi saya untuk batas API publik yang lebih besar, tetapi Anda masih dapat membuat visualisasi yang indah! Unduh file TCX aktivitas Anda dari Strava dan unggah di sini."}
-                  </p>
+                      ? "How do you want to upload your activities?"
+                      : "Bagaimana Anda ingin mengunggah aktivitas Anda?"}
+                  </CardTitle>
+                  <CardDescription>
+                    {language === "en"
+                      ? "Choose your preferred method to create beautiful visualizations"
+                      : "Pilih metode yang Anda sukai untuk membuat visualisasi yang indah"}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
 
-                  {/* What is TCX explanation */}
-                  <div className="text-left mb-3 p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-xs sm:text-xs text-blue-800 leading-relaxed">
+              {/* Option 1: Connect with Strava */}
+              <Card className="border-green-200 bg-green-50">
+                <CardHeader className="text-center">
+                  <CardTitle className="text-green-800">
+                    {language === "en"
+                      ? "1. Connect with Strava"
+                      : "1. Hubungkan dengan Strava"}
+                  </CardTitle>
+                  <CardDescription className="text-green-700">
+                    {language === "en"
+                      ? "Access your recent activities directly from your Strava account"
+                      : "Akses aktivitas terbaru Anda langsung dari akun Strava"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <button
+                    onClick={login}
+                    className="transition-transform hover:scale-105 active:scale-95"
+                  >
+                    <img
+                      src={StravaConnectButton}
+                      alt="Connect with Strava"
+                      className="h-12 w-auto mx-auto"
+                    />
+                  </button>
+                </CardContent>
+              </Card>
+
+              {/* Option 2: Upload TCX */}
+              <Card className="border-orange-200 bg-orange-50">
+                <CardHeader className="text-center">
+                  <CardTitle className="text-orange-800">
+                    {language === "en"
+                      ? "2. Upload TCX File"
+                      : "2. Unggah File TCX"}
+                  </CardTitle>
+                  <CardDescription className="text-orange-700">
+                    {language === "en"
+                      ? "Upload your activity's TCX file for complete privacy and control"
+                      : "Unggah file TCX aktivitas Anda untuk privasi dan kontrol penuh"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs sm:text-sm text-blue-800 leading-relaxed">
                       <strong>
                         🔒{" "}
                         {language === "en"
@@ -350,197 +370,197 @@ function MainApp() {
                       </div>
                     )}
                   </div>
-                </div>
 
-                {/* Instructions */}
-                {showInstructions && (
-                  <div className="text-left mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h3 className="font-medium text-blue-900 mb-3 text-sm sm:text-base">
-                      📱{" "}
-                      {language === "en"
-                        ? "How to Download TCX File"
-                        : "Cara Download File TCX"}
-                    </h3>
+                  {/* Instructions */}
+                  {showInstructions && (
+                    <div className="text-left mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h3 className="font-medium text-blue-900 mb-3 text-sm sm:text-base">
+                        📱{" "}
+                        {language === "en"
+                          ? "How to Download TCX File"
+                          : "Cara Download File TCX"}
+                      </h3>
 
-                    {/* Video Tutorial */}
-                    <div className="mb-4 flex justify-center">
-                      <div className="w-full max-w-sm">
-                        <iframe
-                          width="100%"
-                          height="315"
-                          src="https://www.youtube.com/embed/M_HG8T7v_7c"
-                          title="TCX Download Tutorial"
-                          frameBorder="0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                          allowFullScreen
-                          className="rounded-lg"
-                        ></iframe>
+                      {/* Video Tutorial */}
+                      <div className="mb-4 flex justify-center">
+                        <div className="w-full max-w-sm">
+                          <iframe
+                            width="100%"
+                            height="315"
+                            src="https://www.youtube.com/embed/M_HG8T7v_7c"
+                            title="TCX Download Tutorial"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                            className="rounded-lg"
+                          ></iframe>
+                        </div>
+                      </div>
+
+                      <p className="text-xs sm:text-sm text-blue-700 mb-3 text-center italic">
+                        {language === "en"
+                          ? "📺 Watch the video tutorial above, or follow the written steps below"
+                          : "📺 Tonton tutorial video di atas, atau ikuti langkah tertulis di bawah"}
+                      </p>
+
+                      <div className="text-xs sm:text-sm text-blue-700 space-y-3">
+                        {language === "en" ? (
+                          // English Instructions
+                          <>
+                            <div>
+                              <strong>Desktop:</strong>
+                              <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
+                                <li>Log in to Strava on your browser</li>
+                                <li>
+                                  Open your activity page (e.g.,{" "}
+                                  <code className="bg-blue-100 px-1 rounded text-xs break-all">
+                                    https://www.strava.com/activities/12345678901
+                                  </code>
+                                  )
+                                </li>
+                                <li>
+                                  Add{" "}
+                                  <code className="bg-blue-100 px-1 rounded">
+                                    /export_tcx
+                                  </code>{" "}
+                                  to the end of the URL
+                                </li>
+                                <li>
+                                  Final URL:{" "}
+                                  <code className="bg-blue-100 px-1 rounded text-xs break-all">
+                                    https://www.strava.com/activities/12345678901/export_tcx
+                                  </code>
+                                </li>
+                                <li>
+                                  Put final URL in your browser's address bar
+                                  and press Enter. TCX file will download
+                                  automatically
+                                </li>
+                              </ol>
+                            </div>
+                            <div>
+                              <strong>Mobile:</strong>
+                              <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
+                                <li>Share your activity and copy the link</li>
+                                <li>
+                                  Shared link looks like:{" "}
+                                  <code className="bg-blue-100 px-1 rounded text-xs break-all">
+                                    https://strava.app.link/abc123xyz
+                                  </code>
+                                </li>
+                                <li>
+                                  Open the link in browser incognito mode and
+                                  log in to Strava
+                                </li>
+                                <li>
+                                  Clean the URL (remove everything after the
+                                  activity ID):{" "}
+                                  <code className="bg-blue-100 px-1 rounded text-xs break-all">
+                                    https://www.strava.com/activities/98765432109
+                                  </code>
+                                </li>
+                                <li>
+                                  Add{" "}
+                                  <code className="bg-blue-100 px-1 rounded">
+                                    /export_tcx
+                                  </code>{" "}
+                                  to the end
+                                </li>
+                                <li>
+                                  Final URL:{" "}
+                                  <code className="bg-blue-100 px-1 rounded text-xs break-all">
+                                    https://www.strava.com/activities/98765432109/export_tcx
+                                  </code>
+                                </li>
+                                <li>
+                                  Put final URL in your browser's address bar
+                                  and press Enter. TCX file will download
+                                  automatically
+                                </li>
+                              </ol>
+                            </div>
+                          </>
+                        ) : (
+                          // Indonesian Instructions
+                          <>
+                            <div>
+                              <strong>Desktop:</strong>
+                              <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
+                                <li>Login ke Strava di browser</li>
+                                <li>
+                                  Buka halaman aktivitas Anda (contoh:{" "}
+                                  <code className="bg-blue-100 px-1 rounded text-xs break-all">
+                                    https://www.strava.com/activities/12345678901
+                                  </code>
+                                  )
+                                </li>
+                                <li>
+                                  Tambahkan{" "}
+                                  <code className="bg-blue-100 px-1 rounded">
+                                    /export_tcx
+                                  </code>{" "}
+                                  di akhir URL
+                                </li>
+                                <li>
+                                  URL final:{" "}
+                                  <code className="bg-blue-100 px-1 rounded text-xs break-all">
+                                    https://www.strava.com/activities/12345678901/export_tcx
+                                  </code>
+                                </li>
+                                <li>
+                                  Buka URL final di browser Anda dan tekan
+                                  Enter. File TCX akan otomatis terdownload
+                                </li>
+                              </ol>
+                            </div>
+                            <div>
+                              <strong>Mobile:</strong>
+                              <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
+                                <li>Share aktivitas dan copy linknya</li>
+                                <li>
+                                  Link share seperti:{" "}
+                                  <code className="bg-blue-100 px-1 rounded text-xs break-all">
+                                    https://strava.app.link/def456uvw
+                                  </code>
+                                </li>
+                                <li>
+                                  Buka link di browser dan login ke Strava di
+                                  browser
+                                </li>
+                                <li>
+                                  Bersihkan URL (hapus semua setelah ID
+                                  aktivitas):{" "}
+                                  <code className="bg-blue-100 px-1 rounded text-xs break-all">
+                                    https://www.strava.com/activities/98765432109
+                                  </code>
+                                </li>
+                                <li>
+                                  Tambahkan{" "}
+                                  <code className="bg-blue-100 px-1 rounded">
+                                    /export_tcx
+                                  </code>{" "}
+                                  di akhir
+                                </li>
+                                <li>
+                                  URL final:{" "}
+                                  <code className="bg-blue-100 px-1 rounded text-xs break-all">
+                                    https://www.strava.com/activities/98765432109/export_tcx
+                                  </code>
+                                </li>
+                                <li>
+                                  Buka URL final di browser Anda dan tekan
+                                  Enter. File TCX akan otomatis terdownload
+                                </li>
+                              </ol>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
-
-                    <p className="text-xs sm:text-sm text-blue-700 mb-3 text-center italic">
-                      {language === "en"
-                        ? "📺 Watch the video tutorial above, or follow the written steps below"
-                        : "📺 Tonton tutorial video di atas, atau ikuti langkah tertulis di bawah"}
-                    </p>
-
-                    <div className="text-xs sm:text-sm text-blue-700 space-y-3">
-                      {language === "en" ? (
-                        // English Instructions
-                        <>
-                          <div>
-                            <strong>Desktop:</strong>
-                            <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
-                              <li>Log in to Strava on your browser</li>
-                              <li>
-                                Open your activity page (e.g.,{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
-                                  https://www.strava.com/activities/12345678901
-                                </code>
-                                )
-                              </li>
-                              <li>
-                                Add{" "}
-                                <code className="bg-blue-100 px-1 rounded">
-                                  /export_tcx
-                                </code>{" "}
-                                to the end of the URL
-                              </li>
-                              <li>
-                                Final URL:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
-                                  https://www.strava.com/activities/12345678901/export_tcx
-                                </code>
-                              </li>
-                              <li>
-                                Put final URL in your browser's address bar and
-                                press Enter. TCX file will download
-                                automatically
-                              </li>
-                            </ol>
-                          </div>
-                          <div>
-                            <strong>Mobile:</strong>
-                            <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
-                              <li>Share your activity and copy the link</li>
-                              <li>
-                                Shared link looks like:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
-                                  https://strava.app.link/abc123xyz
-                                </code>
-                              </li>
-                              <li>
-                                Open the link in browser incognito mode and log
-                                in to Strava
-                              </li>
-                              <li>
-                                Clean the URL (remove everything after the
-                                activity ID):{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
-                                  https://www.strava.com/activities/98765432109
-                                </code>
-                              </li>
-                              <li>
-                                Add{" "}
-                                <code className="bg-blue-100 px-1 rounded">
-                                  /export_tcx
-                                </code>{" "}
-                                to the end
-                              </li>
-                              <li>
-                                Final URL:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
-                                  https://www.strava.com/activities/98765432109/export_tcx
-                                </code>
-                              </li>
-                              <li>
-                                Put final URL in your browser's address bar and
-                                press Enter. TCX file will download
-                                automatically
-                              </li>
-                            </ol>
-                          </div>
-                        </>
-                      ) : (
-                        // Indonesian Instructions
-                        <>
-                          <div>
-                            <strong>Desktop:</strong>
-                            <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
-                              <li>Login ke Strava di browser</li>
-                              <li>
-                                Buka halaman aktivitas Anda (contoh:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
-                                  https://www.strava.com/activities/12345678901
-                                </code>
-                                )
-                              </li>
-                              <li>
-                                Tambahkan{" "}
-                                <code className="bg-blue-100 px-1 rounded">
-                                  /export_tcx
-                                </code>{" "}
-                                di akhir URL
-                              </li>
-                              <li>
-                                URL final:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
-                                  https://www.strava.com/activities/12345678901/export_tcx
-                                </code>
-                              </li>
-                              <li>
-                                Buka URL final di browser Anda dan tekan Enter.
-                                File TCX akan otomatis terdownload
-                              </li>
-                            </ol>
-                          </div>
-                          <div>
-                            <strong>Mobile:</strong>
-                            <ol className="list-decimal list-inside ml-2 sm:ml-4 mt-1 space-y-2">
-                              <li>Share aktivitas dan copy linknya</li>
-                              <li>
-                                Link share seperti:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
-                                  https://strava.app.link/def456uvw
-                                </code>
-                              </li>
-                              <li>
-                                Buka link di browser dan login ke Strava di
-                                browser
-                              </li>
-                              <li>
-                                Bersihkan URL (hapus semua setelah ID
-                                aktivitas):{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
-                                  https://www.strava.com/activities/98765432109
-                                </code>
-                              </li>
-                              <li>
-                                Tambahkan{" "}
-                                <code className="bg-blue-100 px-1 rounded">
-                                  /export_tcx
-                                </code>{" "}
-                                di akhir
-                              </li>
-                              <li>
-                                URL final:{" "}
-                                <code className="bg-blue-100 px-1 rounded text-xs break-all">
-                                  https://www.strava.com/activities/98765432109/export_tcx
-                                </code>
-                              </li>
-                              <li>
-                                Buka URL final di browser Anda dan tekan Enter.
-                                File TCX akan otomatis terdownload
-                              </li>
-                            </ol>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           ) : (
             <div className="space-y-6">
               {/* Connection Status */}

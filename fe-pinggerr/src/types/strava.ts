@@ -110,6 +110,8 @@ export interface StravaActivity {
   total_photo_count?: number;
   has_kudoed?: boolean;
   suffer_score?: number;
+  // Data source: 'strava' for API data, 'tcx' for uploaded files
+  source: "strava" | "tcx";
   // Lap data - populated when fetched separately or parsed from TCX
   laps?: ActivityLap[];
   // Trackpoint data - populated when fetched from streams API or parsed from TCX

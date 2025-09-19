@@ -6,8 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { StravaActivity } from "@/types/strava";
 import { config } from "@/config/env";
 
-// Strava logo
+// Strava logos
 import stravaLogoWhite from "@/assets/api_logo_pwrdBy_strava_stack_white.svg";
+import stravaLogoOrange from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
+
+// Helper function to detect if activity data is from Strava (vs TCX)
+const isStravaData = (activity: StravaActivity): boolean => {
+  return activity.source === "strava";
+};
 
 interface PinkGreenActivityProps {
   activity: StravaActivity;
@@ -456,6 +462,14 @@ export function PinkGreenActivity({
             {language === "en"
               ? "Pink Green Activity Visualization"
               : "Visualisasi Aktivitas Pink Green"}
+            {/* Show Strava logo only if data is from Strava */}
+            {isStravaData(activity) && (
+              <img
+                src={stravaLogoOrange}
+                alt="Powered by Strava"
+                className="h-4 w-auto ml-2"
+              />
+            )}
             {/* Only show "View on Strava" link if activity has an ID (from Strava API, not TCX) */}
             {/* {activity.id && (
               <a

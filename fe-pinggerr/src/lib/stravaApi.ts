@@ -54,16 +54,30 @@ export class StravaApi {
    * Fetch athlete's activities
    */
   async getActivities(page = 1, perPage = 30): Promise<StravaActivity[]> {
-    return this.makeRequest<StravaActivity[]>(
+    const activities = await this.makeRequest<StravaActivity[]>(
       `/athlete/activities?page=${page}&per_page=${perPage}`
     );
+
+    // Add source field to indicate data is from Strava API
+    return activities.map((activity) => ({
+      ...activity,
+      source: "strava" as const,
+    }));
   }
 
   /**
    * Get detailed activity data (includes full polyline)
    */
   async getActivityDetails(activityId: number): Promise<StravaActivity> {
-    return this.makeRequest<StravaActivity>(`/activities/${activityId}`);
+    const activity = await this.makeRequest<StravaActivity>(
+      `/activities/${activityId}`
+    );
+
+    // Add source field to indicate data is from Strava API
+    return {
+      ...activity,
+      source: "strava" as const,
+    };
   }
 
   /**

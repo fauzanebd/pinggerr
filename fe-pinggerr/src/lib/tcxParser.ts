@@ -359,6 +359,7 @@ export function convertTcxToStravaActivity(
     pr_count: 0,
     total_photo_count: 0,
     has_kudoed: false,
+    source: "tcx", // Mark as TCX data source
     laps, // Include the converted lap data
     trackpoints, // Include the converted trackpoint data
   };
