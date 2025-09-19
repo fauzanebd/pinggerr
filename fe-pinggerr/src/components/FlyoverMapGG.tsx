@@ -10,6 +10,7 @@ import type {
   ActivitySegment,
   FlyoverState,
 } from "@/types/strava";
+import constants from "@/lib/constants";
 
 // Dynamic import for video encoder
 let loadEncoder: any = null;
@@ -55,6 +56,8 @@ interface FlyoverMapProps {
   isExporting?: boolean;
   exportDuration?: number;
   exportType?: "high-quality" | "ordinary"; // NEW: export type
+  orientation?: "landscape" | "portrait"; // NEW: orientation prop
+  resetSignal?: number; // NEW: numeric signal to reset animation/visuals
 }
 
 export const FlyoverMap: React.FC<FlyoverMapProps> = ({
@@ -70,6 +73,8 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
   isExporting = false,
   exportDuration = 30,
   exportType = "high-quality",
+  orientation = "landscape",
+  resetSignal,
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -89,9 +94,6 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
   );
   const validTrackpoints = useRef<ActivityTrackpoint[]>([]);
   const isAnimating = useRef<boolean>(false);
-  const animationStartTime = useRef<number | null>(null);
-
-  // Tile loading state - removed unused refs
 
   // Video export refs
   const encoder = useRef<any>(null);
@@ -101,6 +103,10 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
   const lerp = (start: number, end: number, amt: number): number => {
     return (1 - amt) * start + amt * end;
   };
+
+  // const lerp2 = (a: number, b: number, t: number): number => {
+  //   return a + (b - a) * t;
+  // };
 
   // Compute camera position with dynamic lat/lng degree calculations
   const computeCameraPosition = useCallback(
@@ -139,7 +145,10 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
 
       // Apply smoothing with LERP if enabled and we have a previous position
       if (smooth && previousCameraPosition.current) {
-        const smoothingFactor = 0.95;
+        const smoothingFactor = 0.05;
+
+        // alpha = fraction of new position we want to move towards per frame
+        // const alpha = 0.2;
         newCameraPosition = {
           lng: lerp(
             newCameraPosition.lng,
@@ -151,6 +160,16 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
             previousCameraPosition.current.lat,
             smoothingFactor
           ),
+          // lng: lerp2(
+          //   previousCameraPosition.current.lng,
+          //   newCameraPosition.lng,
+          //   alpha
+          // ),
+          // lat: lerp2(
+          //   previousCameraPosition.current.lat,
+          //   newCameraPosition.lat,
+          //   alpha
+          // ),
         };
       }
 
@@ -199,7 +218,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     [exportType]
   );
 
-  // NEW: Tile loading strategies based on mode
+  // Tile loading strategies based on mode
   const waitForTilesStrategy = useCallback(
     async (
       position: { lng: number; lat: number },
@@ -289,7 +308,6 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     []
   );
 
-  // Preview animation (30fps, can skip frames)
   const animatePreview = useCallback(
     async (duration: number): Promise<void> => {
       return new Promise((resolve) => {
@@ -298,6 +316,9 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
           !validTrackpoints.current.length ||
           pathDistance.current === 0
         ) {
+          console.warn(
+            "resolved because: no map, no valid trackpoints, or no path distance"
+          );
           resolve();
           return;
         }
@@ -307,9 +328,9 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
           tp.latitude!,
         ]);
         const pathLineString = turf.lineString(coordinates);
-        const startBearing = 0;
-        const pitch = 60;
-        const altitude = 1000;
+        const startBearing = constants.BEARING_START;
+        const pitch = constants.PITCH_START;
+        const altitude = constants.ALTITUDE_START;
 
         let startTime: number | null = null;
         let lastFrameTime = 0;
@@ -317,7 +338,6 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
 
         const animateFrame = async (currentTime: number) => {
           if (!startTime) startTime = currentTime;
-
           // Throttle frame rate
           if (currentTime - lastFrameTime < targetFrameTime) {
             animationFrame.current = requestAnimationFrame(animateFrame);
@@ -325,17 +345,22 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
           }
           lastFrameTime = currentTime;
 
+          // Calculate animation phase based on resume startPhase only
           const animationPhase = Math.min(
             (currentTime - startTime) / duration,
             1
           );
 
+          // Check if we should pause
           if (!flyoverState.isPlaying && !isExporting) {
+            console.warn("resolved because: not playing and not exporting");
             resolve();
             return;
           }
 
+          // completed
           if (animationPhase >= 1) {
+            console.warn("resolved because: animation phase >= 1 (completed)");
             resolve();
             return;
           }
@@ -347,6 +372,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
           });
 
           if (!alongPath?.geometry?.coordinates) {
+            console.warn("resolved because: no along path coordinates");
             resolve();
             return;
           }
@@ -380,6 +406,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
           }
 
           const bearing = startBearing - animationPhase * 200.0;
+          // const bearing = startBearing;
           const cameraPosition = computeCameraPosition(
             pitch,
             bearing,
@@ -394,11 +421,20 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
             isFinite(cameraPosition.lat)
           ) {
             try {
+              let targetElevation = 0;
+              const elev = map.current.queryTerrainElevation([lng, lat]);
+              if (typeof elev === "number" && isFinite(elev)) {
+                targetElevation = elev;
+              }
+
+              // ensure camera altitude is above terrain
+              const cameraAltitudeAboveSea = targetElevation + altitude;
+
               const camera = map.current.getFreeCameraOptions();
               camera.setPitchBearing(pitch, bearing);
               camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
                 cameraPosition,
-                altitude
+                cameraAltitudeAboveSea
               );
               map.current.setFreeCameraOptions(camera);
             } catch (error) {
@@ -436,9 +472,9 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         tp.latitude!,
       ]);
       const pathLineString = turf.lineString(coordinates);
-      const startBearing = 0;
-      const pitch = 60;
-      const altitude = 1000;
+      const startBearing = constants.BEARING_START;
+      const pitch = constants.PITCH_START;
+      const altitude = constants.ALTITUDE_START;
 
       const gl = map.current.painter.context.gl;
       const width = gl.drawingBufferWidth;
@@ -596,9 +632,9 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         tp.latitude!,
       ]);
       const pathLineString = turf.lineString(coordinates);
-      const startBearing = 0;
-      const pitch = 60;
-      const altitude = 1000;
+      const startBearing = constants.BEARING_START;
+      const pitch = constants.PITCH_START;
+      const altitude = constants.ALTITUDE_START;
 
       const gl = map.current.painter.context.gl;
       const width = gl.drawingBufferWidth;
@@ -728,10 +764,12 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         const mapInstance = new mapboxgl.Map({
           container: mapContainer.current!,
           style: "mapbox://styles/mapbox/satellite-v9",
+          // style: "mapbox://styles/mapbox/satellite-streets-v12",
+          // style: "mapbox://styles/mapbox/standard-satellite",
           center: [startCoord.longitude!, startCoord.latitude!],
-          zoom: 15,
-          pitch: 60,
-          bearing: 0,
+          zoom: orientation === "portrait" ? 14 : 15, // Slightly different zoom for portrait
+          pitch: constants.PITCH_START,
+          bearing: constants.BEARING_START,
           antialias: true,
         });
 
@@ -790,12 +828,18 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         cancelAnimationFrame(animationFrame.current);
       }
       isAnimating.current = false;
-      animationStartTime.current = null;
       pathDistance.current = 0;
       previousCameraPosition.current = null;
+
       encoderInitialized.current = false;
     };
-  }, [canLoadMap, isCheckingLimit, activity.trackpoints, trackMapLoad]);
+  }, [
+    canLoadMap,
+    isCheckingLimit,
+    activity.trackpoints,
+    trackMapLoad,
+    orientation,
+  ]);
 
   // Add GPS path to map
   const addGpsPath = useCallback(
@@ -928,6 +972,16 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     }
   }, [triggerOrdinaryExport, isExporting, exportOrdinaryVideo]);
 
+  // Reset animation state
+  const resetAnimationState = useCallback(() => {
+    if (animationFrame.current) {
+      cancelAnimationFrame(animationFrame.current);
+      animationFrame.current = null;
+    }
+    isAnimating.current = false;
+    previousCameraPosition.current = null;
+  }, []);
+
   // Show final overview
   const showFinalView = useCallback(
     (validTrackpoints: ActivityTrackpoint[]) => {
@@ -940,30 +994,87 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         }
       });
 
+      const zoomSubtractor = orientation === "portrait" ? 2 : 3;
+      const zoomLevel = Math.max(12, map.current.getZoom() - zoomSubtractor);
+      console.log("zoomLevel", zoomLevel);
       map.current.flyTo({
         center: bounds.getCenter(),
-        zoom: Math.max(10, map.current.getZoom() - 3),
+        zoom: zoomLevel,
         pitch: 0,
-        bearing: 0,
+        bearing: constants.BEARING_START,
         speed: 0.8,
         curve: 1.2,
         easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
         essential: true,
       });
 
-      setTimeout(() => {
-        if (map.current) {
-          map.current.fitBounds(bounds, {
-            padding: 100,
-            pitch: 0,
-            bearing: 0,
-            duration: 2000,
+      // setTimeout(() => {
+      //   if (map.current) {
+      //     map.current.fitBounds(bounds, {
+      //       padding: 100,
+      //       pitch: 0,
+      //       bearing: 0,
+      //       duration: 2000,
+      //     });
+      //   }
+      // }, 1000);
+    },
+    [orientation]
+  );
+
+  // Handle reset signal: reset state and visuals back to start
+  useEffect(() => {
+    if (!map.current || !isMapLoaded) return;
+    if (resetSignal === undefined) return;
+
+    // Reset animation state
+    resetAnimationState();
+
+    // Reset visuals to start
+    try {
+      // Reset line gradient to start
+      map.current.setPaintProperty("gps-path-line", "line-gradient", [
+        "step",
+        ["line-progress"],
+        "#F99FD2",
+        0,
+        "rgba(0, 0, 0, 0)",
+      ]);
+
+      // Reset progress point to first coordinate
+      const first = validTrackpoints.current[0];
+      if (first?.longitude && first?.latitude) {
+        const source = map.current.getSource(
+          "progress-point"
+        ) as mapboxgl.GeoJSONSource;
+        if (source) {
+          source.setData({
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "Point",
+              coordinates: [first.longitude, first.latitude],
+            },
           });
         }
-      }, 1000);
-    },
-    []
-  );
+        // Reset camera to initial view
+        const camera = map.current.getFreeCameraOptions();
+        camera.setPitchBearing(constants.PITCH_START, 0);
+        const cameraPos = computeCameraPosition(
+          constants.PITCH_START,
+          constants.BEARING_START,
+          { lng: first.longitude, lat: first.latitude },
+          constants.ALTITUDE_START,
+          false
+        );
+        camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
+          cameraPos,
+          constants.ALTITUDE_START
+        );
+        map.current.setFreeCameraOptions(camera);
+      }
+    } catch {}
+  }, [resetSignal, isMapLoaded, resetAnimationState, computeCameraPosition]);
 
   // Start animation when flyover state changes - use preview animation
   useEffect(() => {
@@ -972,7 +1083,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
 
     if (flyoverState.isPlaying && !isAnimating.current) {
       isAnimating.current = true;
-      const duration = 60 * 1000; // 60 seconds
+      const duration = constants.DEFAULT_DURATION_SECONDS * 1000; // 60 seconds
 
       animatePreview(duration).then(() => {
         isAnimating.current = false;
@@ -980,6 +1091,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         onFlyoverEnd?.();
       });
     } else if (!flyoverState.isPlaying && isAnimating.current) {
+      // When paused, cancel any ongoing animation frame
       if (animationFrame.current) {
         cancelAnimationFrame(animationFrame.current);
         animationFrame.current = null;
@@ -997,7 +1109,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
   if (isCheckingLimit) {
     return (
       <div
-        className={`flex items-center justify-center min-h-[400px] bg-gray-100 rounded-lg ${className}`}
+        className={`flex items-center justify-center h-full bg-gray-100 rounded-lg ${className}`}
       >
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
@@ -1010,7 +1122,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
   if (!canLoadMap) {
     return (
       <div
-        className={`flex items-center justify-center min-h-[400px] bg-red-50 border border-red-200 rounded-lg ${className}`}
+        className={`flex items-center justify-center h-full bg-red-50 border border-red-200 rounded-lg ${className}`}
       >
         <div className="text-center p-6">
           <div className="text-red-600 text-4xl mb-4">🚫</div>
@@ -1029,7 +1141,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
   if (mapError) {
     return (
       <div
-        className={`flex items-center justify-center min-h-[400px] bg-red-50 border border-red-200 rounded-lg ${className}`}
+        className={`flex items-center justify-center h-full bg-red-50 border border-red-200 rounded-lg ${className}`}
       >
         <div className="text-center p-6">
           <div className="text-red-600 text-4xl mb-4">⚠️</div>
@@ -1044,8 +1156,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     <div className={`relative ${className}`}>
       <div
         ref={mapContainer}
-        className="w-full h-full min-h-[400px] rounded-lg overflow-hidden"
-        style={{ minHeight: "500px" }}
+        className="w-full h-full rounded-lg overflow-hidden"
       />
       {!isMapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">

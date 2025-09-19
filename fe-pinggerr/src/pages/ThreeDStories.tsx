@@ -5,13 +5,12 @@ import {
   Play,
   Pause,
   RotateCcw,
-  Download,
-  Video,
   Zap,
   Crown,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 import { FlyoverMap } from "@/components/FlyoverMapGG";
-import { FinalStatsOverlay } from "@/components/FinalStatsOverlay";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
 import type { StravaActivity, FlyoverState } from "@/types/strava";
 
@@ -31,7 +30,6 @@ export function ThreeDStories({
     useState<StravaActivity>(activity);
   const [isLoadingStreams, setIsLoadingStreams] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showFinalStats, setShowFinalStats] = useState(false);
 
   // Video export state - now with different types
   const [isExporting, setIsExporting] = useState(false);
@@ -42,6 +40,12 @@ export function ThreeDStories({
   const [exportType, setExportType] = useState<"high-quality" | "ordinary">(
     "high-quality"
   );
+
+  // Orientation state
+  const [orientation, setOrientation] = useState<"landscape" | "portrait">(
+    "landscape"
+  );
+  const [resetAnimationTrigger, setResetAnimationTrigger] = useState(0);
 
   // Flyover state
   const [flyoverState, setFlyoverState] = useState<FlyoverState>({
@@ -77,6 +81,8 @@ export function ThreeDStories({
       preview: "Preview: 30fps, optimized for smooth playback",
       hqExport: "High Quality: 60fps, perfect tiles, slow but perfect",
       fastExport: "Fast Export: 24fps, quick processing, good quality",
+      landscape: "Landscape (16:9)",
+      portrait: "Portrait (9:16)",
     },
     id: {
       title: "Flyover Cerita 3D",
@@ -98,6 +104,8 @@ export function ThreeDStories({
       preview: "Preview: 30fps, dioptimalkan untuk pemutaran mulus",
       hqExport: "Kualitas Tinggi: 60fps, tiles sempurna, lambat tapi sempurna",
       fastExport: "Ekspor Cepat: 24fps, pemrosesan cepat, kualitas bagus",
+      landscape: "Landscape (16:9)",
+      portrait: "Portrait (9:16)",
     },
   };
 
@@ -178,6 +186,7 @@ export function ThreeDStories({
       currentSegment: undefined,
       showingSegmentOverlay: false,
     }));
+    setResetAnimationTrigger((prev) => prev + 1);
   };
 
   // Video export controls
@@ -197,10 +206,23 @@ export function ThreeDStories({
     setExportDuration(duration);
   };
 
+  const toggleOrientation = () => {
+    setOrientation((prev) => (prev === "landscape" ? "portrait" : "landscape"));
+    // Reset flyover state when orientation changes
+    setFlyoverState((prev) => ({
+      ...prev,
+      isPlaying: false,
+      currentTrackpointIndex: 0,
+      currentSegment: undefined,
+      showingSegmentOverlay: false,
+    }));
+    // Trigger animation reset
+    setResetAnimationTrigger((prev) => prev + 1);
+  };
+
   // Handle flyover end
   const handleFlyoverEnd = useCallback(() => {
     setFlyoverState((prev) => ({ ...prev, isPlaying: false }));
-    setShowFinalStats(true);
   }, []);
 
   // Loading state
@@ -324,6 +346,22 @@ export function ThreeDStories({
               >
                 <RotateCcw className="w-4 h-4 mr-1" />
                 {t.reset}
+              </Button>
+
+              {/* Orientation Toggle */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={toggleOrientation}
+                disabled={isExporting}
+                title={orientation === "landscape" ? t.landscape : t.portrait}
+              >
+                {orientation === "landscape" ? (
+                  <Monitor className="w-4 h-4 mr-1" />
+                ) : (
+                  <Smartphone className="w-4 h-4 mr-1" />
+                )}
+                {orientation === "landscape" ? "16:9" : "9:16"}
               </Button>
 
               {/* Export Duration Selector */}
@@ -455,31 +493,36 @@ export function ThreeDStories({
             </div>
           </div>
 
-          {/* 3D Map */}
-          <FlyoverMap
-            activity={enhancedActivity}
-            flyoverState={flyoverState}
-            onFlyoverEnd={handleFlyoverEnd}
-            onVideoExportStart={handleVideoExportStart}
-            onVideoExportProgress={handleVideoExportProgress}
-            onVideoExportComplete={handleVideoExportComplete}
-            triggerVideoExport={triggerVideoExport}
-            triggerOrdinaryExport={triggerOrdinaryExport}
-            isExporting={isExporting}
-            exportDuration={exportDuration}
-            exportType={exportType}
-            className="mb-4"
-          />
+          {/* 3D Map with Aspect Ratio Container */}
+          <div className="mb-4">
+            <div
+              className="relative w-full bg-gray-100 rounded-lg overflow-hidden"
+              style={{
+                aspectRatio: orientation === "landscape" ? "16/9" : "9/16",
+                maxHeight: orientation === "landscape" ? "60vh" : "80vh",
+                maxWidth: orientation === "landscape" ? "80vw" : "60vw",
+              }}
+            >
+              <FlyoverMap
+                activity={enhancedActivity}
+                flyoverState={flyoverState}
+                onFlyoverEnd={handleFlyoverEnd}
+                onVideoExportStart={handleVideoExportStart}
+                onVideoExportProgress={handleVideoExportProgress}
+                onVideoExportComplete={handleVideoExportComplete}
+                triggerVideoExport={triggerVideoExport}
+                triggerOrdinaryExport={triggerOrdinaryExport}
+                isExporting={isExporting}
+                exportDuration={exportDuration}
+                exportType={exportType}
+                orientation={orientation}
+                resetSignal={resetAnimationTrigger}
+                className="absolute inset-0 w-full h-full"
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
-
-      {/* Final Stats Overlay */}
-      <FinalStatsOverlay
-        activity={enhancedActivity}
-        isVisible={showFinalStats}
-        onClose={() => setShowFinalStats(false)}
-        language={language}
-      />
     </div>
   );
 }
