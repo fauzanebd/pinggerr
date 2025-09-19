@@ -179,6 +179,24 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     []
   );
 
+  // Wait for map to be fully rendered
+  const waitForMapRender = useCallback(async (): Promise<void> => {
+    if (!map.current) return;
+
+    return new Promise((resolve) => {
+      // Force a repaint
+      map.current!.triggerRepaint();
+
+      // Wait for render event
+      const onRender = () => {
+        map.current!.off("render", onRender);
+        // Additional small delay to ensure everything is drawn
+        setTimeout(resolve, 300);
+      };
+      map.current!.on("render", onRender);
+    });
+  }, []);
+
   // Initialize video encoder
   const initVideoEncoder = useCallback(
     async (fps: number = 30) => {
@@ -406,7 +424,6 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
           }
 
           const bearing = startBearing - animationPhase * 200.0;
-          // const bearing = startBearing;
           const cameraPosition = computeCameraPosition(
             pitch,
             bearing,
@@ -481,12 +498,15 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
       const height = gl.drawingBufferHeight;
       const ptr = videoEncoder.getRGBPointer();
 
-      const totalFrames = exportDuration * 60; // 60fps
+      // Calculate frames for animation and final view
+      const animationFrames = Math.floor(exportDuration * 60 * 0.9); // 90% for animation
+      const finalViewFrames = Math.floor(exportDuration * 60 * 0.1); // 10% for final view
+      const totalFrames = animationFrames + finalViewFrames;
       const framePositions: FramePosition[] = [];
 
-      // Pre-calculate all positions
-      for (let frame = 0; frame < totalFrames; frame++) {
-        const animationPhase = frame / (totalFrames - 1);
+      // Pre-calculate animation positions
+      for (let frame = 0; frame < animationFrames; frame++) {
+        const animationPhase = frame / (animationFrames - 1);
         const currentDistance = pathDistance.current * animationPhase;
         const alongPath = turf.along(pathLineString, currentDistance, {
           units: "kilometers",
@@ -495,6 +515,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         if (alongPath?.geometry?.coordinates) {
           const [lng, lat] = alongPath.geometry.coordinates;
           const bearing = startBearing - animationPhase * 200.0;
+
           const cameraPosition = computeCameraPosition(
             pitch,
             bearing,
@@ -515,10 +536,10 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
       }
 
       console.log(
-        `Rendering ${framePositions.length} frames at 60fps with perfect quality...`
+        `Rendering ${totalFrames} frames at 60fps with perfect quality: ${animationFrames} animation + ${finalViewFrames} final view...`
       );
 
-      // Render each frame with maximum quality
+      // Render animation frames with maximum quality
       for (let i = 0; i < framePositions.length; i++) {
         const frameData = framePositions[i];
 
@@ -553,11 +574,23 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
           isFinite(frameData.cameraPosition.lng) &&
           isFinite(frameData.cameraPosition.lat)
         ) {
+          let targetElevation = 0;
+          const elev = map.current.queryTerrainElevation([
+            frameData.targetPosition.lng,
+            frameData.targetPosition.lat,
+          ]);
+          if (typeof elev === "number" && isFinite(elev)) {
+            targetElevation = elev;
+          }
+
+          // ensure camera altitude is above terrain
+          const cameraAltitudeAboveSea = targetElevation + altitude;
+
           const camera = map.current.getFreeCameraOptions();
           camera.setPitchBearing(frameData.pitch, frameData.bearing);
           camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
             frameData.cameraPosition,
-            altitude
+            cameraAltitudeAboveSea
           );
           map.current.setFreeCameraOptions(camera);
         }
@@ -565,29 +598,102 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         // HIGH QUALITY: Wait for perfect tiles
         await waitForTilesStrategy(frameData.targetPosition, "high-quality");
 
-        // Additional wait for perfect rendering
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // Wait for map to be fully rendered
+        await waitForMapRender();
 
-        // Force render and wait for completion
-        map.current.triggerRepaint();
-        await new Promise((resolve) => {
-          const onRender = () => {
-            map.current!.off("render", onRender);
-            resolve(undefined);
-          };
-          map.current!.on("render", onRender);
-        });
+        // Ensure WebGL context is current and bound
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.finish();
 
         // Capture perfect frame
         const pixels = videoEncoder.memory().subarray(ptr);
         gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+        // Debug: Check if we're getting non-zero pixels
+        const hasContent = pixels.some((pixel: number) => pixel !== 0);
+        if (i % 10 === 0) {
+          console.log(
+            `Frame ${i}: Has content: ${hasContent}, First few pixels:`,
+            Array.from(pixels.slice(0, 12))
+          );
+        }
+
         videoEncoder.encodeRGBPointer();
 
-        const progress = (i + 1) / framePositions.length;
+        const progress = (i + 1) / totalFrames;
         onVideoExportProgress?.(progress);
 
         if (i % 5 === 0) {
           await new Promise((resolve) => setTimeout(resolve, 5));
+        }
+      }
+
+      // Final view frames - show the complete route overview
+      console.log("Rendering final view frames with high quality...");
+
+      // Calculate bounds for final view
+      const bounds = new mapboxgl.LngLatBounds();
+      validTrackpoints.current.forEach((tp) => {
+        if (tp.latitude && tp.longitude) {
+          bounds.extend([tp.longitude, tp.latitude]);
+        }
+      });
+
+      const { center, zoom } =
+        map.current.cameraForBounds(bounds, {
+          padding: { top: 60, bottom: 60, left: 60, right: 60 },
+        }) ?? {};
+
+      if (center && zoom !== undefined) {
+        // Animate to final view
+        map.current.flyTo({
+          center,
+          zoom,
+          pitch: 0,
+          bearing: constants.BEARING_START,
+          speed: 0.8,
+          curve: 1.2,
+          easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+          essential: true,
+        });
+
+        // Wait for flyTo to complete
+        await new Promise((resolve) => {
+          const onMoveEnd = () => {
+            map.current!.off("moveend", onMoveEnd);
+            resolve(undefined);
+          };
+          map.current!.on("moveend", onMoveEnd);
+        });
+
+        // Capture final view frames with high quality
+        for (let frame = 0; frame < finalViewFrames; frame++) {
+          // HIGH QUALITY: Wait for perfect tiles
+          const centerCoords = Array.isArray(center)
+            ? { lng: center[0], lat: center[1] }
+            : "lng" in center
+            ? { lng: center.lng, lat: center.lat }
+            : { lng: center.lon, lat: center.lat };
+          await waitForTilesStrategy(centerCoords, "high-quality");
+
+          // Wait for map to be fully rendered
+          await waitForMapRender();
+
+          // Ensure WebGL context is current and bound
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.finish();
+
+          // Capture perfect frame
+          const pixels = videoEncoder.memory().subarray(ptr);
+          gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+          videoEncoder.encodeRGBPointer();
+
+          const progress = (animationFrames + frame + 1) / totalFrames;
+          onVideoExportProgress?.(progress);
+
+          if (frame % 5 === 0) {
+            await new Promise((resolve) => setTimeout(resolve, 5));
+          }
         }
       }
 
@@ -604,6 +710,10 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     } catch (error) {
       console.error("High-quality video export failed:", error);
       onVideoExportComplete?.(new Blob());
+    } finally {
+      console.log("cleaning up HQ encoder state");
+      encoder.current = null;
+      encoderInitialized.current = false;
     }
   }, [
     isExporting,
@@ -641,11 +751,18 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
       const height = gl.drawingBufferHeight;
       const ptr = videoEncoder.getRGBPointer();
 
-      const totalFrames = exportDuration * 24; // 24fps
-      console.log(`Rendering ${totalFrames} frames at 24fps (fast export)...`);
+      // Calculate frames for animation and final view
+      const animationFrames = Math.floor(exportDuration * 24 * 0.9); // 90% for animation
+      const finalViewFrames = Math.floor(exportDuration * 24 * 0.1); // 10% for final view
+      const totalFrames = animationFrames + finalViewFrames;
 
-      for (let frame = 0; frame < totalFrames; frame++) {
-        const animationPhase = frame / (totalFrames - 1);
+      console.log(
+        `Rendering ${totalFrames} frames at 24fps (fast export): ${animationFrames} animation + ${finalViewFrames} final view...`
+      );
+
+      // Animation frames
+      for (let frame = 0; frame < animationFrames; frame++) {
+        const animationPhase = frame / (animationFrames - 1);
         const currentDistance = pathDistance.current * animationPhase;
         const alongPath = turf.along(pathLineString, currentDistance, {
           units: "kilometers",
@@ -654,14 +771,6 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         if (!alongPath?.geometry?.coordinates) continue;
 
         const [lng, lat] = alongPath.geometry.coordinates;
-        const bearing = startBearing - animationPhase * 200.0;
-        const cameraPosition = computeCameraPosition(
-          pitch,
-          bearing,
-          { lng, lat },
-          altitude,
-          false
-        );
 
         // Update visual elements
         map.current.setPaintProperty("gps-path-line", "line-gradient", [
@@ -683,13 +792,30 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
           });
         }
 
+        const bearing = startBearing - animationPhase * 200.0;
+        const cameraPosition = computeCameraPosition(
+          pitch,
+          bearing,
+          { lng, lat },
+          altitude,
+          false
+        );
+
         // Set camera
         if (isFinite(cameraPosition.lng) && isFinite(cameraPosition.lat)) {
+          let targetElevation = 0;
+          const elev = map.current.queryTerrainElevation([lng, lat]);
+          if (typeof elev === "number" && isFinite(elev)) {
+            targetElevation = elev;
+          }
+
+          // ensure camera altitude is above terrain
+          const cameraAltitudeAboveSea = targetElevation + altitude;
           const camera = map.current.getFreeCameraOptions();
           camera.setPitchBearing(pitch, bearing);
           camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
             cameraPosition,
-            altitude
+            cameraAltitudeAboveSea
           );
           map.current.setFreeCameraOptions(camera);
         }
@@ -700,6 +826,10 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         // Minimal wait for rendering
         await new Promise((resolve) => setTimeout(resolve, 20));
 
+        // Ensure WebGL context is current and bound
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.finish();
+
         // Capture frame quickly
         const pixels = videoEncoder.memory().subarray(ptr);
         gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
@@ -707,6 +837,71 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
 
         const progress = (frame + 1) / totalFrames;
         onVideoExportProgress?.(progress);
+      }
+
+      // Final view frames - show the complete route overview
+      console.log("Rendering final view frames...");
+
+      // Calculate bounds for final view
+      const bounds = new mapboxgl.LngLatBounds();
+      validTrackpoints.current.forEach((tp) => {
+        if (tp.latitude && tp.longitude) {
+          bounds.extend([tp.longitude, tp.latitude]);
+        }
+      });
+
+      const { center, zoom } =
+        map.current.cameraForBounds(bounds, {
+          padding: { top: 60, bottom: 60, left: 60, right: 60 },
+        }) ?? {};
+
+      if (center && zoom !== undefined) {
+        // Animate to final view
+        map.current.flyTo({
+          center,
+          zoom,
+          pitch: 0,
+          bearing: constants.BEARING_START,
+          speed: 0.8,
+          curve: 1.2,
+          easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+          essential: true,
+        });
+
+        // Wait for flyTo to complete
+        await new Promise((resolve) => {
+          const onMoveEnd = () => {
+            map.current!.off("moveend", onMoveEnd);
+            resolve(undefined);
+          };
+          map.current!.on("moveend", onMoveEnd);
+        });
+
+        // Capture final view frames
+        for (let frame = 0; frame < finalViewFrames; frame++) {
+          // ORDINARY: Minimal tile waiting for speed
+          const centerCoords = Array.isArray(center)
+            ? { lng: center[0], lat: center[1] }
+            : "lng" in center
+            ? { lng: center.lng, lat: center.lat }
+            : { lng: center.lon, lat: center.lat };
+          await waitForTilesStrategy(centerCoords, "ordinary");
+
+          // Minimal wait for rendering
+          await new Promise((resolve) => setTimeout(resolve, 20));
+
+          // Ensure WebGL context is current and bound
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.finish();
+
+          // Capture frame quickly
+          const pixels = videoEncoder.memory().subarray(ptr);
+          gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+          videoEncoder.encodeRGBPointer();
+
+          const progress = (animationFrames + frame + 1) / totalFrames;
+          onVideoExportProgress?.(progress);
+        }
       }
 
       const mp4 = videoEncoder.end();
@@ -722,6 +917,10 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     } catch (error) {
       console.error("Ordinary video export failed:", error);
       onVideoExportComplete?.(new Blob());
+    } finally {
+      console.log("cleaning up ordinary encoder state");
+      encoder.current = null;
+      encoderInitialized.current = false;
     }
   }, [
     isExporting,
@@ -771,6 +970,7 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
           pitch: constants.PITCH_START,
           bearing: constants.BEARING_START,
           antialias: true,
+          preserveDrawingBuffer: true,
         });
 
         map.current = mapInstance;
@@ -921,44 +1121,6 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     []
   );
 
-  // Function to preload tiles along the path (for now not used yet, lets comment this out)
-  //   const preloadTilesAlongPath = useCallback(
-  //     (mapInstance: mapboxgl.Map, trackpoints: ActivityTrackpoint[]) => {
-  //       if (!trackpoints.length) return;
-
-  //       // Sample key points along the path for preloading
-  //       const sampleInterval = Math.max(1, Math.floor(trackpoints.length / 20));
-  //       const keyPoints = trackpoints.filter(
-  //         (_, index) => index % sampleInterval === 0
-  //       );
-
-  //       keyPoints.forEach((point, index) => {
-  //         setTimeout(() => {
-  //           if (!mapInstance || !point.latitude || !point.longitude) return;
-
-  //           // Briefly move camera to preload tiles (invisible to user)
-  //           const tempCamera = mapInstance.getFreeCameraOptions();
-  //           const preloadPosition = computeCameraPosition(
-  //             60, // pitch
-  //             index * 10, // varying bearing
-  //             { lng: point.longitude, lat: point.latitude },
-  //             1000, // altitude
-  //             false // no smoothing needed for preload
-  //           );
-
-  //           tempCamera.position = mapboxgl.MercatorCoordinate.fromLngLat(
-  //             preloadPosition,
-  //             1000
-  //           );
-
-  //           // This triggers tile loading but happens too fast for user to see
-  //           mapInstance.setFreeCameraOptions(tempCamera);
-  //         }, index * 50); // Stagger the preloading
-  //       });
-  //     },
-  //     []
-  //   );
-
   // Handle different export triggers
   useEffect(() => {
     if (triggerVideoExport && !isExporting) {
@@ -982,7 +1144,6 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
     previousCameraPosition.current = null;
   }, []);
 
-  // Show final overview
   const showFinalView = useCallback(
     (validTrackpoints: ActivityTrackpoint[]) => {
       if (!map.current || !validTrackpoints?.length) return;
@@ -994,12 +1155,18 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         }
       });
 
-      const zoomSubtractor = orientation === "portrait" ? 2 : 3;
-      const zoomLevel = Math.max(12, map.current.getZoom() - zoomSubtractor);
-      console.log("zoomLevel", zoomLevel);
+      // Compute fitting zoom & center manually
+      const { center, zoom } =
+        map.current.cameraForBounds(bounds, {
+          padding: { top: 60, bottom: 60, left: 60, right: 60 },
+        }) ?? {};
+
+      if (!center || zoom === undefined) return;
+
+      // Now fly with your cinematic easing
       map.current.flyTo({
-        center: bounds.getCenter(),
-        zoom: zoomLevel,
+        center,
+        zoom,
         pitch: 0,
         bearing: constants.BEARING_START,
         speed: 0.8,
@@ -1007,19 +1174,8 @@ export const FlyoverMap: React.FC<FlyoverMapProps> = ({
         easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
         essential: true,
       });
-
-      // setTimeout(() => {
-      //   if (map.current) {
-      //     map.current.fitBounds(bounds, {
-      //       padding: 100,
-      //       pitch: 0,
-      //       bearing: 0,
-      //       duration: 2000,
-      //     });
-      //   }
-      // }, 1000);
     },
-    [orientation]
+    []
   );
 
   // Handle reset signal: reset state and visuals back to start
