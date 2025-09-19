@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
 import type { StravaActivity, ActivityListProps } from "@/types/strava";
 
+// Import Strava logo
+import stravaLogo from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
+
 export const ActivityList: React.FC<ActivityListProps> = ({
   onSelectActivity,
 }) => {
@@ -197,6 +200,12 @@ export const ActivityList: React.FC<ActivityListProps> = ({
         <CardTitle className="flex items-center gap-2">
           Recent Activities
           <Badge variant="outline">{activities.length}</Badge>
+          {/* Show Strava logo since all activities in this list are from Strava */}
+          <img
+            src={stravaLogo}
+            alt="Powered by Strava"
+            className="h-4 w-auto ml-2"
+          />
         </CardTitle>
         <CardDescription>
           Select a running activity to create a beautiful visualization

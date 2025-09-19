@@ -15,6 +15,14 @@ import type {
   FlyoverState,
 } from "@/types/strava";
 
+// Import Strava logo
+import stravaLogoOrange from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
+
+// Helper function to detect if activity data is from Strava (vs TCX)
+const isStravaData = (activity: StravaActivity): boolean => {
+  return activity.source === "strava";
+};
+
 interface ThreeDStoriesProps {
   activity: StravaActivity;
   language: "en" | "id";
@@ -357,6 +365,14 @@ export function ThreeDStories({
             <div className="flex items-center gap-2">
               <span className="text-brand-green">🎭</span>
               {t.title}
+              {/* Show Strava logo only if data is from Strava */}
+              {isStravaData(activity) && (
+                <img
+                  src={stravaLogoOrange}
+                  alt="Powered by Strava"
+                  className="h-4 w-auto ml-2"
+                />
+              )}
             </div>
 
             {/* Playback Controls */}
