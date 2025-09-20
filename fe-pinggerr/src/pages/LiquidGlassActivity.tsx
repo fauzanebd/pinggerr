@@ -82,14 +82,34 @@ export function LiquidGlassActivity({
   const [glassStyle, setGlassStyle] = useState<"light" | "dark">("light");
 
   // Glass effect colors
+  //   const GLASS_COLORS = {
+  //     light: {
+  //       cardBg: "rgba(255, 255, 255, 0.5)",
+  //       cardBorder: "rgba(255, 255, 255, 0.3)",
+  //       textPrimary: "rgba(255, 255, 255, 0.95)",
+  //       textSecondary: "rgba(255, 255, 255, 0.7)",
+  //       accent: "rgba(255, 255, 255, 0.4)",
+  //       routePath: "rgba(255, 255, 255, 0.9)",
+  //     },
+  //     dark: {
+  //       cardBg: "rgba(0, 0, 0, 0.5)",
+  //       cardBorder: "rgba(255, 255, 255, 0.2)",
+  //       textPrimary: "rgba(255, 255, 255, 0.95)",
+  //       textSecondary: "rgba(255, 255, 255, 0.7)",
+  //       accent: "rgba(255, 255, 255, 0.3)",
+  //       routePath: "rgba(255, 255, 255, 0.8)",
+  //     },
+  //   };
+
+  // Glass effect colors
   const GLASS_COLORS = {
     light: {
       cardBg: "rgba(255, 255, 255, 0.5)",
       cardBorder: "rgba(255, 255, 255, 0.3)",
-      textPrimary: "rgba(255, 255, 255, 0.95)",
-      textSecondary: "rgba(255, 255, 255, 0.7)",
+      textPrimary: "#2D3047",
+      textSecondary: "#2D3047",
       accent: "rgba(255, 255, 255, 0.4)",
-      routePath: "rgba(255, 255, 255, 0.9)",
+      routePath: "#2D3047",
     },
     dark: {
       cardBg: "rgba(0, 0, 0, 0.5)",
@@ -115,7 +135,7 @@ export function LiquidGlassActivity({
       img.src = stravaLogoWhite;
       logoImageRef.current = img;
 
-      // Load icon images
+      // Load icon images with appropriate colors based on glass style
       const iconNames = [
         "MapPin",
         "Zap",
@@ -125,8 +145,12 @@ export function LiquidGlassActivity({
         "Calendar",
         "Heart",
       ];
+
+      // Use different colors based on glass style
+      const iconColor = glassStyle === "light" ? "#2D3047" : "white";
+
       const iconImagePromises = iconNames.map(async (iconName) => {
-        const iconImage = await createIconImage(iconName, "white", 16);
+        const iconImage = await createIconImage(iconName, iconColor, 16);
         return { iconName, iconImage };
       });
 
@@ -143,7 +167,7 @@ export function LiquidGlassActivity({
     };
 
     loadAssets();
-  }, []);
+  }, [glassStyle]); // Add glassStyle as dependency
 
   // Generate image when parameters change
   useEffect(() => {
@@ -391,7 +415,7 @@ export function LiquidGlassActivity({
       tempLayer.add(innerGlow);
 
       // Left section (2/3 of the card)
-      const leftSectionWidth = cardWidth * 0.63;
+      const leftSectionWidth = cardWidth * 0.6;
 
       // Activity title - positioned in left section, aligned left
       const titleFontSize = 18;
@@ -429,7 +453,7 @@ export function LiquidGlassActivity({
         const statWidth = (leftSectionWidth - 80) / statsPerRow;
         const statHeight = 90;
 
-        const statX = cardX + 20 + col * (statWidth + 10);
+        const statX = cardX + 20 + col * (statWidth + 30);
         let statY = statsStartY + row * statHeight;
         if (index === 2 || index === 3) {
           statY -= 20;
@@ -524,21 +548,21 @@ export function LiquidGlassActivity({
       }
 
       // Add Strava logo if from Strava - positioned in bottom right
-      if (isStravaData(activity)) {
-        const logoWidth = 40;
-        const logoHeight = logoWidth * (30 / 88);
+      //   if (isStravaData(activity)) {
+      const logoWidth = 40;
+      const logoHeight = logoWidth * (30 / 88);
 
-        tempLayer.add(
-          new Konva.Image({
-            image: logoImage,
-            x: cardX + cardWidth - logoWidth - 12,
-            y: cardY + cardHeight - logoHeight - 12,
-            width: logoWidth,
-            height: logoHeight,
-            opacity: 0.7,
-          })
-        );
-      }
+      tempLayer.add(
+        new Konva.Image({
+          image: logoImage,
+          x: cardX + cardWidth - logoWidth - 12,
+          y: cardY + cardHeight - logoHeight - 12,
+          width: logoWidth,
+          height: logoHeight,
+          opacity: 1,
+        })
+      );
+      //   }
 
       // Draw and export with transparent background
       tempLayer.draw();
