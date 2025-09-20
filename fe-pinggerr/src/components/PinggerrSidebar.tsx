@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Palette } from "lucide-react";
+import { Glasses, Palette } from "lucide-react";
 import PinggerrLogo from "@/assets/pinggerr_logo.svg";
 
 import {
@@ -31,6 +31,17 @@ const visualizationTypes = [
       id: "Visualisasi klasik pink & hijau",
     },
   },
+  {
+    id: "liquid-glass-activity",
+    title: { en: "Liquid Glass Activity", id: "Aktivitas Kaca Cair" },
+    path: "/visualization/liquid-glass-activity",
+    icon: Glasses,
+    description: {
+      en: "Liquid glass activity visualization",
+      id: "Visualisasi aktivitas kaca cair",
+    },
+  },
+
   // {
   //   id: "3d-stories",
   //   title: { en: "3D Stories", id: "Cerita 3D" },
