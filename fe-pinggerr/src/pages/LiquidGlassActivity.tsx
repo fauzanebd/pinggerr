@@ -750,12 +750,12 @@ export function LiquidGlassActivity({
 
           {/* Info */}
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>
+            {/* <p>
               💡{" "}
               {language === "en"
                 ? "This wide transparent glass card is perfect for social media posts!"
                 : "Kartu kaca transparan lebar ini sempurna untuk postingan media sosial!"}
-            </p>
+            </p> */}
             {pathPoints.length === 0 && (
               <p className="mt-2 text-orange-600">
                 ⚠️{" "}
