@@ -281,7 +281,7 @@ export function LiquidGlassActivity({
       label: "ELAPSED TIME",
       value: formatTime(activity.elapsed_time),
       shortLabel: "ELAPSED TIME",
-      icon: Timer,
+      icon: Clock,
       iconName: "Timer",
     },
     speed: {
