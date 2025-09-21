@@ -12,6 +12,7 @@ import {
   Mountain,
   Calendar,
   Heart,
+  Timer,
 } from "lucide-react";
 
 // Strava logos
@@ -33,6 +34,7 @@ const createIconImage = async (
     MapPin: `<path d="m12 8 6-3-6-3v10"/><path d="m8 11.99-5.5 3.14a1 1 0 0 0 0 1.74l8.5 4.86a2 2 0 0 0 2 0l8.5-4.86a1 1 0 0 0 0-1.74L16 12"/><path d="m6.49 12.85 11.02 6.3"/><path d="M17.51 12.85 6.5 19.15"/>`,
     Zap: `<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>`,
     Clock: `<circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/>`,
+    Timer: `<path d="M10 2h4"/><path d="M4.6 11a8 8 0 0 0 1.7 8.7 8 8 0 0 0 8.7 1.7 8 8 0 0 0 1.7-8.7 8 8 0 0 0-8.7-1.7"/><path d="M9 12l2 2 4-4"/>`,
     Gauge: `<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>`,
     Mountain: `<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>`,
     Calendar: `<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>`,
@@ -79,7 +81,7 @@ export function LiquidGlassActivity({
     
     // Filter to only include stats that are available for this activity
     const availableStatKeys = [
-      "distance", "pace", "time", "speed", "elevation", "date",
+      "distance", "pace", "time", "elapsed", "speed", "elevation", "date",
       ...(activity.has_heartrate && activity.average_heartrate ? ["heartrate"] : [])
     ];
     
@@ -116,7 +118,7 @@ export function LiquidGlassActivity({
   useEffect(() => {
     // Reset selected stats when activity changes to ensure we don't have invalid selections
     const availableStatKeys = [
-      "distance", "pace", "time", "speed", "elevation", "date",
+      "distance", "pace", "time", "elapsed", "speed", "elevation", "date",
       ...(activity.has_heartrate && activity.average_heartrate ? ["heartrate"] : [])
     ];
     
@@ -153,6 +155,7 @@ export function LiquidGlassActivity({
         "MapPin",
         "Zap",
         "Clock",
+        "Timer",
         "Gauge",
         "Mountain",
         "Calendar",
@@ -267,11 +270,18 @@ export function LiquidGlassActivity({
       iconName: "Zap",
     },
     time: {
-      label: "TIME",
+      label: "MOVING TIME",
       value: formatTime(activity.moving_time),
-      shortLabel: "TIME",
+      shortLabel: "MOVING TIME",
       icon: Clock,
       iconName: "Clock",
+    },
+    elapsed: {
+      label: "ELAPSED TIME",
+      value: formatTime(activity.elapsed_time),
+      shortLabel: "ELAPSED TIME",
+      icon: Timer,
+      iconName: "Timer",
     },
     speed: {
       label: "AVG SPEED",
