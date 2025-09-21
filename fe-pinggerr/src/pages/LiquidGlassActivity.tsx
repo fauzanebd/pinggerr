@@ -79,17 +79,27 @@ export function LiquidGlassActivity({
   const [selectedStats, setSelectedStats] = useState<string[]>(() => {
     // Default stats we want to show
     const defaultStats = ["distance", "pace", "time", "heartrate"];
-    
+
     // Filter to only include stats that are available for this activity
     const availableStatKeys = [
-      "distance", "pace", "time", "elapsed", "speed", "elevation", "date",
-      ...(activity.has_heartrate && activity.average_heartrate ? ["heartrate"] : [])
+      "distance",
+      "pace",
+      "time",
+      "elapsed",
+      "speed",
+      "elevation",
+      "date",
+      ...(activity.has_heartrate && activity.average_heartrate
+        ? ["heartrate"]
+        : []),
     ];
-    
+
     // Return only the default stats that are actually available, up to 4
-    return defaultStats.filter(stat => availableStatKeys.includes(stat)).slice(0, 4);
+    return defaultStats
+      .filter((stat) => availableStatKeys.includes(stat))
+      .slice(0, 4);
   });
-  
+
   const [glassStyle, setGlassStyle] = useState<"light" | "dark">("light");
 
   // Glass effect colors
@@ -119,23 +129,40 @@ export function LiquidGlassActivity({
   useEffect(() => {
     // Reset selected stats when activity changes to ensure we don't have invalid selections
     const availableStatKeys = [
-      "distance", "pace", "time", "elapsed", "speed", "elevation", "date",
-      ...(activity.has_heartrate && activity.average_heartrate ? ["heartrate"] : [])
+      "distance",
+      "pace",
+      "time",
+      "elapsed",
+      "speed",
+      "elevation",
+      "date",
+      ...(activity.has_heartrate && activity.average_heartrate
+        ? ["heartrate"]
+        : []),
     ];
-    
+
     // Filter current selection to only include available stats
-    const validSelectedStats = selectedStats.filter(stat => availableStatKeys.includes(stat));
-    
+    const validSelectedStats = selectedStats.filter((stat) =>
+      availableStatKeys.includes(stat)
+    );
+
     // If we have fewer than 4 valid stats selected, try to fill up to 4 with remaining available stats
     if (validSelectedStats.length < 4) {
-      const remainingStats = availableStatKeys.filter(stat => !validSelectedStats.includes(stat));
-      const additionalStats = remainingStats.slice(0, 4 - validSelectedStats.length);
+      const remainingStats = availableStatKeys.filter(
+        (stat) => !validSelectedStats.includes(stat)
+      );
+      const additionalStats = remainingStats.slice(
+        0,
+        4 - validSelectedStats.length
+      );
       const newSelectedStats = [...validSelectedStats, ...additionalStats];
-      
+
       if (JSON.stringify(newSelectedStats) !== JSON.stringify(selectedStats)) {
         setSelectedStats(newSelectedStats);
       }
-    } else if (JSON.stringify(validSelectedStats) !== JSON.stringify(selectedStats)) {
+    } else if (
+      JSON.stringify(validSelectedStats) !== JSON.stringify(selectedStats)
+    ) {
       setSelectedStats(validSelectedStats);
     }
   }, [activity]); // Only depend on activity, not selectedStats to avoid infinite loop
