@@ -35,12 +35,21 @@ export function PinkGreenActivity({
   const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
   const [fontLoaded, setFontLoaded] = useState(false);
 
-  // User customizable options
-  const [selectedStats, setSelectedStats] = useState<string[]>([
-    "distance",
-    "pace",
-    "time",
-  ]);
+  // User customizable options - initialize with available stats only
+  const [selectedStats, setSelectedStats] = useState<string[]>(() => {
+    // Default stats we want to show
+    const defaultStats = ["distance", "pace", "time"];
+    
+    // Filter to only include stats that are available for this activity
+    const availableStatKeys = [
+      "distance", "pace", "time", "speed", "elevation", "date",
+      ...(activity.has_heartrate && activity.average_heartrate ? ["heartrate"] : [])
+    ];
+    
+    // Return only the default stats that are actually available, up to 3
+    return defaultStats.filter(stat => availableStatKeys.includes(stat)).slice(0, 3);
+  });
+  
   const [invertColors, setInvertColors] = useState(false);
 
   // Colors
@@ -49,6 +58,31 @@ export function PinkGreenActivity({
 
   // Fixed dimensions for consistent output
   const CANVAS_DIMENSIONS = { width: 800, height: 800 };
+
+  // Reset selected stats when activity changes
+  useEffect(() => {
+    // Reset selected stats when activity changes to ensure we don't have invalid selections
+    const availableStatKeys = [
+      "distance", "pace", "time", "speed", "elevation", "date",
+      ...(activity.has_heartrate && activity.average_heartrate ? ["heartrate"] : [])
+    ];
+    
+    // Filter current selection to only include available stats
+    const validSelectedStats = selectedStats.filter(stat => availableStatKeys.includes(stat));
+    
+    // If we have fewer than 3 valid stats selected, try to fill up to 3 with remaining available stats
+    if (validSelectedStats.length < 3) {
+      const remainingStats = availableStatKeys.filter(stat => !validSelectedStats.includes(stat));
+      const additionalStats = remainingStats.slice(0, 3 - validSelectedStats.length);
+      const newSelectedStats = [...validSelectedStats, ...additionalStats];
+      
+      if (JSON.stringify(newSelectedStats) !== JSON.stringify(selectedStats)) {
+        setSelectedStats(newSelectedStats);
+      }
+    } else if (JSON.stringify(validSelectedStats) !== JSON.stringify(selectedStats)) {
+      setSelectedStats(validSelectedStats);
+    }
+  }, [activity]); // Only depend on activity, not selectedStats to avoid infinite loop
 
   // Load Strava logo and font
   useEffect(() => {
@@ -100,14 +134,24 @@ export function PinkGreenActivity({
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
 
-  const formatPace = (distanceMeters: number, timeSeconds: number) => {
-    // Calculate pace as min/km (more common for running)
-    const minutes = timeSeconds / 60;
-    const km = distanceMeters / 1000;
-    const paceMinPerKm = minutes / km;
-    const paceMin = Math.floor(paceMinPerKm);
-    const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
-    return `${paceMin}:${paceSec.toString().padStart(2, "0")}/km`;
+  const formatPace = (activity: StravaActivity) => {
+    // Use average_speed from Strava if available, otherwise fall back to calculation
+    if (activity.average_speed && activity.average_speed > 0) {
+      // average_speed is in m/s, convert to min/km
+      // Formula: 1000 / (average_speed * 60) = minutes per km
+      const paceMinPerKm = 1000 / (activity.average_speed * 60);
+      const paceMin = Math.floor(paceMinPerKm);
+      const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
+      return `${paceMin}:${paceSec.toString().padStart(2, "0")}/km`;
+    } else {
+      // Fallback to total distance / total time calculation
+      const minutes = activity.moving_time / 60;
+      const km = activity.distance / 1000;
+      const paceMinPerKm = minutes / km;
+      const paceMin = Math.floor(paceMinPerKm);
+      const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
+      return `${paceMin}:${paceSec.toString().padStart(2, "0")}/km`;
+    }
   };
 
   const formatSpeed = (distanceMeters: number, timeSeconds: number) => {
@@ -127,8 +171,6 @@ export function PinkGreenActivity({
   };
 
   const formatHeartRate = (bpm: number) => `${Math.round(bpm)} BPM`;
-
-  // const formatCadence = (rpm: number) => `${Math.round(rpm)} SPM`;
 
   // Track download in the backend
   const trackDownload = async () => {
@@ -152,9 +194,9 @@ export function PinkGreenActivity({
       shortLabel: "DISTANCE",
     },
     pace: {
-      label: "PACE",
-      value: formatPace(activity.distance, activity.moving_time),
-      shortLabel: "PACE",
+      label: "AVG PACE",
+      value: formatPace(activity), // Pass the whole activity object
+      shortLabel: "AVG PACE",
     },
     time: {
       label: "TIME",
@@ -185,15 +227,6 @@ export function PinkGreenActivity({
           },
         }
       : {}),
-    // ...(activity.average_cadence
-    //   ? {
-    //       cadence: {
-    //         label: "AVG CADENCE",
-    //         value: formatCadence(activity.average_cadence),
-    //         shortLabel: "AVG CADENCE",
-    //       },
-    //     }
-    //   : {}),
   };
 
   // Process polyline data for map visualization with proper constraints
@@ -218,7 +251,7 @@ export function PinkGreenActivity({
       const dataAreaHeight = canvasDimensions.height * 0.5;
       const mapAreaHeight = canvasDimensions.height * 0.3;
 
-      const mapPadding = canvasDimensions.width * 0.2; // 8% padding
+      const mapPadding = canvasDimensions.width * 0.2; // 20% padding
       const mapAreaX = mapPadding;
       const mapAreaY = dataAreaHeight;
       const mapAreaWidth = canvasDimensions.width - mapPadding * 2;
@@ -322,9 +355,6 @@ export function PinkGreenActivity({
         const statY = startY + index * spacing;
 
         // Font sizes based on canvas size
-        // const labelSize = Math.max(24, CANVAS_DIMENSIONS.width * 0.02);
-        // const valueSize = Math.max(48, CANVAS_DIMENSIONS.width * 0.048);
-
         const labelSize = 18;
         const valueSize = 38;
 
@@ -470,18 +500,6 @@ export function PinkGreenActivity({
                 className="h-4 w-auto ml-2"
               />
             )}
-            {/* Only show "View on Strava" link if activity has an ID (from Strava API, not TCX) */}
-            {/* {activity.id && (
-              <a
-                href={`https://www.strava.com/activities/${activity.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-orange-600 hover:text-orange-700 font-medium underline ml-2"
-                style={{ color: "#FC5200" }}
-              >
-                View on Strava
-              </a>
-            )} */}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -503,14 +521,6 @@ export function PinkGreenActivity({
       <CardContent>
         {/* Controls */}
         <div className="mb-4 space-y-4">
-          {/* Font loading status */}
-          {/* <div className="text-xs text-muted-foreground">
-            Font status:{" "}
-            {fontLoaded
-              ? "✅ Special Gothic Expanded One loaded"
-              : "⏳ Loading font..."}
-          </div> */}
-
           <div>
             <label className="text-sm font-medium mb-2 block">
               {language === "en"
