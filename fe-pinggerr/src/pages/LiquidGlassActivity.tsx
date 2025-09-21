@@ -90,26 +90,6 @@ export function LiquidGlassActivity({
   const [glassStyle, setGlassStyle] = useState<"light" | "dark">("light");
 
   // Glass effect colors
-  //   const GLASS_COLORS = {
-  //     light: {
-  //       cardBg: "rgba(255, 255, 255, 0.5)",
-  //       cardBorder: "rgba(255, 255, 255, 0.3)",
-  //       textPrimary: "rgba(255, 255, 255, 0.95)",
-  //       textSecondary: "rgba(255, 255, 255, 0.7)",
-  //       accent: "rgba(255, 255, 255, 0.4)",
-  //       routePath: "rgba(255, 255, 255, 0.9)",
-  //     },
-  //     dark: {
-  //       cardBg: "rgba(0, 0, 0, 0.5)",
-  //       cardBorder: "rgba(255, 255, 255, 0.2)",
-  //       textPrimary: "rgba(255, 255, 255, 0.95)",
-  //       textSecondary: "rgba(255, 255, 255, 0.7)",
-  //       accent: "rgba(255, 255, 255, 0.3)",
-  //       routePath: "rgba(255, 255, 255, 0.8)",
-  //     },
-  //   };
-
-  // Glass effect colors
   const GLASS_COLORS = {
     light: {
       cardBg: "rgba(255, 255, 255, 0.5)",
@@ -218,13 +198,24 @@ export function LiquidGlassActivity({
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
 
-  const formatPace = (distanceMeters: number, timeSeconds: number) => {
-    const minutes = timeSeconds / 60;
-    const km = distanceMeters / 1000;
-    const paceMinPerKm = minutes / km;
-    const paceMin = Math.floor(paceMinPerKm);
-    const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
-    return `${paceMin}:${paceSec.toString().padStart(2, "0")}/km`;
+  const formatPace = (activity: StravaActivity) => {
+    // Use average_speed from Strava if available, otherwise fall back to calculation
+    if (activity.average_speed && activity.average_speed > 0) {
+      // average_speed is in m/s, convert to min/km
+      // Formula: 1000 / (average_speed * 60) = minutes per km
+      const paceMinPerKm = 1000 / (activity.average_speed * 60);
+      const paceMin = Math.floor(paceMinPerKm);
+      const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
+      return `${paceMin}:${paceSec.toString().padStart(2, "0")}/km`;
+    } else {
+      // Fallback to total distance / total time calculation
+      const minutes = activity.moving_time / 60;
+      const km = activity.distance / 1000;
+      const paceMinPerKm = minutes / km;
+      const paceMin = Math.floor(paceMinPerKm);
+      const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
+      return `${paceMin}:${paceSec.toString().padStart(2, "0")}/km`;
+    }
   };
 
   const formatSpeed = (distanceMeters: number, timeSeconds: number) => {
@@ -269,9 +260,9 @@ export function LiquidGlassActivity({
       iconName: "MapPin",
     },
     pace: {
-      label: "PACE",
-      value: formatPace(activity.distance, activity.moving_time),
-      shortLabel: "PACE",
+      label: "AVG PACE",
+      value: formatPace(activity), // Pass the whole activity object
+      shortLabel: "AVG PACE",
       icon: Zap,
       iconName: "Zap",
     },
@@ -475,7 +466,6 @@ export function LiquidGlassActivity({
       const statsStartY = cardY + 60;
       const maxStats = Math.min(selectedStats.length, 4);
       const statsPerRow = 2;
-      //   const statRows = Math.ceil(maxStats / statsPerRow);
 
       selectedStats.slice(0, maxStats).forEach((statKey, index) => {
         const stat = availableStats[statKey as keyof typeof availableStats];
@@ -580,8 +570,7 @@ export function LiquidGlassActivity({
         }
       }
 
-      // Add Strava logo if from Strava - positioned in bottom right
-      //   if (isStravaData(activity)) {
+      // Add Strava logo - positioned in bottom right
       const logoWidth = 40;
       const logoHeight = logoWidth * (30 / 88);
 
@@ -595,7 +584,6 @@ export function LiquidGlassActivity({
           opacity: 1,
         })
       );
-      //   }
 
       // Draw and export with transparent background
       tempLayer.draw();
@@ -783,12 +771,6 @@ export function LiquidGlassActivity({
 
           {/* Info */}
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            {/* <p>
-              💡{" "}
-              {language === "en"
-                ? "This wide transparent glass card is perfect for social media posts!"
-                : "Kartu kaca transparan lebar ini sempurna untuk postingan media sosial!"}
-            </p> */}
             {pathPoints.length === 0 && (
               <p className="mt-2 text-orange-600">
                 ⚠️{" "}
