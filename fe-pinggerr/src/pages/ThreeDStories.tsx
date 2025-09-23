@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,8 +9,9 @@ import {
   Crown,
   Monitor,
   Smartphone,
+  X,
 } from "lucide-react";
-import { FlyoverMap } from "@/components/FlyoverMapGG";
+import { FlyoverMap, type FlyoverMapHandle } from "@/components/FlyoverMapGG";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
 import type { StravaActivity, FlyoverState } from "@/types/strava";
 
@@ -31,29 +32,29 @@ interface ThreeDStoriesProps {
 export function ThreeDStories({
   activity,
   language,
-  onDownload: _onDownload,
+  onDownload,
 }: ThreeDStoriesProps) {
   const { stravaApi } = useStravaAuth();
+  const flyoverMapRef = useRef<FlyoverMapHandle>(null);
   const [enhancedActivity, setEnhancedActivity] =
     useState<StravaActivity>(activity);
   const [isLoadingStreams, setIsLoadingStreams] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Video export state - now with different types
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportProgress, setExportProgress] = useState(0);
-  const [triggerVideoExport, setTriggerVideoExport] = useState(false);
-  const [triggerOrdinaryExport, setTriggerOrdinaryExport] = useState(false);
-  const [exportDuration, setExportDuration] = useState(30);
-  const [exportType, setExportType] = useState<"high-quality" | "ordinary">(
-    "high-quality"
-  );
 
   // Orientation state
   const [orientation, setOrientation] = useState<"landscape" | "portrait">(
     "landscape"
   );
   const [resetAnimationTrigger, setResetAnimationTrigger] = useState(0);
+
+  // Export state
+  const [exportProgress, setExportProgress] = useState({
+    frame: 0,
+    totalFrames: 0,
+    percentage: 0,
+    isExporting: false,
+  });
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Flyover state
   const [flyoverState, setFlyoverState] = useState<FlyoverState>({
@@ -81,6 +82,7 @@ export function ThreeDStories({
       exporting: "Exporting...",
       exportingHQ: "Exporting HQ (60fps)...",
       exportingFast: "Exporting Fast (24fps)...",
+      cancelExport: "Cancel Export",
       exportDuration: "Export Duration",
       progress: "Progress",
       error: "Error",
@@ -91,6 +93,12 @@ export function ThreeDStories({
       fastExport: "Fast Export: 24fps, quick processing, good quality",
       landscape: "Landscape (16:9)",
       portrait: "Portrait (9:16)",
+      keepTabActive: "Please keep this tab active during export",
+      exportComplete: "Export complete! Video downloaded.",
+      exportFailed: "Export failed. Please try again.",
+      exportingStatus: "Capturing frames...",
+      compilingVideo: "Compiling video...",
+      capturingFrame: "Capturing frame",
     },
     id: {
       title: "Flyover Cerita 3D",
@@ -104,6 +112,7 @@ export function ThreeDStories({
       exporting: "Mengekspor...",
       exportingHQ: "Mengekspor HQ (60fps)...",
       exportingFast: "Mengekspor Cepat (24fps)...",
+      cancelExport: "Batalkan Ekspor",
       exportDuration: "Durasi Ekspor",
       progress: "Progres",
       error: "Error",
@@ -114,6 +123,12 @@ export function ThreeDStories({
       fastExport: "Ekspor Cepat: 24fps, pemrosesan cepat, kualitas bagus",
       landscape: "Landscape (16:9)",
       portrait: "Portrait (9:16)",
+      keepTabActive: "Harap jaga tab ini tetap aktif selama ekspor",
+      exportComplete: "Ekspor selesai! Video telah diunduh.",
+      exportFailed: "Ekspor gagal. Silakan coba lagi.",
+      exportingStatus: "Menangkap frame...",
+      compilingVideo: "Menyusun video...",
+      capturingFrame: "Menangkap frame",
     },
   };
 
@@ -146,47 +161,14 @@ export function ThreeDStories({
     loadStreams();
   }, [activity.id, stravaApi, enhancedActivity.trackpoints]);
 
-  // Video export callbacks
-  const handleVideoExportStart = useCallback(() => {
-    setIsExporting(true);
-    setExportProgress(0);
-  }, []);
-
-  const handleVideoExportProgress = useCallback((progress: number) => {
-    setExportProgress(progress);
-  }, []);
-
-  const handleVideoExportComplete = useCallback(
-    (videoBlob: Blob) => {
-      setIsExporting(false);
-      setTriggerVideoExport(false);
-      setTriggerOrdinaryExport(false);
-      setExportProgress(0);
-
-      if (videoBlob.size > 0) {
-        const url = URL.createObjectURL(videoBlob);
-        const a = document.createElement("a");
-        a.href = url;
-        const quality =
-          exportType === "high-quality" ? "HQ_60fps" : "Fast_24fps";
-        a.download = `${activity.name || "flyover"}_3d_${quality}.mp4`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
-        alert("Video export failed. Please try again.");
-      }
-    },
-    [activity.name, exportType]
-  );
-
   // Playback controls
   const togglePlayback = () => {
+    if (exportProgress.isExporting) return; // Don't allow playback during export
     setFlyoverState((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
   };
 
   const resetFlyover = () => {
+    if (exportProgress.isExporting) return; // Don't allow reset during export
     setFlyoverState((prev) => ({
       ...prev,
       isPlaying: false,
@@ -195,28 +177,11 @@ export function ThreeDStories({
       showingSegmentOverlay: false,
     }));
     setResetAnimationTrigger((prev) => prev + 1);
-  };
-
-  // Video export controls
-  const startHighQualityExport = () => {
-    if (isExporting) return;
-    setExportType("high-quality");
-    setTriggerVideoExport(true);
-  };
-
-  const startOrdinaryExport = () => {
-    if (isExporting) return;
-    setExportType("ordinary");
-    setTriggerOrdinaryExport(true);
-  };
-
-  const handleExportDurationChange = (duration: number) => {
-    setExportDuration(duration);
   };
 
   const toggleOrientation = () => {
+    if (exportProgress.isExporting) return; // Don't allow orientation change during export
     setOrientation((prev) => (prev === "landscape" ? "portrait" : "landscape"));
-    // Reset flyover state when orientation changes
     setFlyoverState((prev) => ({
       ...prev,
       isPlaying: false,
@@ -224,8 +189,87 @@ export function ThreeDStories({
       currentSegment: undefined,
       showingSegmentOverlay: false,
     }));
-    // Trigger animation reset
     setResetAnimationTrigger((prev) => prev + 1);
+  };
+
+  // Export handlers
+  const handleExportHQ = async () => {
+    if (exportProgress.isExporting) return;
+
+    // Stop current playback if running
+    if (flyoverState.isPlaying) {
+      resetFlyover();
+      // Wait a bit for reset to complete
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    setExportError(null);
+    flyoverMapRef.current?.exportVideo("high");
+  };
+
+  const handleExportFast = async () => {
+    if (exportProgress.isExporting) return;
+
+    // Stop current playback if running
+    if (flyoverState.isPlaying) {
+      resetFlyover();
+      // Wait a bit for reset to complete
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    setExportError(null);
+    flyoverMapRef.current?.exportVideo("fast");
+  };
+
+  const handleCancelExport = () => {
+    flyoverMapRef.current?.cancelExport();
+    setExportProgress({
+      frame: 0,
+      totalFrames: 0,
+      percentage: 0,
+      isExporting: false,
+    });
+    setExportError(null);
+  };
+
+  const handleExportProgress = (progress: typeof exportProgress) => {
+    setExportProgress(progress);
+  };
+
+  const handleExportComplete = (videoBlob: Blob) => {
+    // Create download link
+    const url = URL.createObjectURL(videoBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `flyover-${activity.name || "activity"}-${Date.now()}.webm`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    onDownload?.(url);
+    setExportProgress({
+      frame: 0,
+      totalFrames: 0,
+      percentage: 0,
+      isExporting: false,
+    });
+
+    // Show success message briefly
+    setTimeout(() => {
+      // You could add a toast notification here
+      console.log(t.exportComplete);
+    }, 100);
+  };
+
+  const handleExportError = (error: string) => {
+    setExportError(error);
+    setExportProgress({
+      frame: 0,
+      totalFrames: 0,
+      percentage: 0,
+      isExporting: false,
+    });
   };
 
   // Handle flyover end
@@ -308,13 +352,6 @@ export function ThreeDStories({
     );
   }
 
-  const getExportingText = () => {
-    if (exportType === "high-quality") {
-      return t.exportingHQ;
-    }
-    return t.exportingFast;
-  };
-
   return (
     <div className="space-y-6">
       {/* Main Flyover Card */}
@@ -336,157 +373,171 @@ export function ThreeDStories({
 
             {/* Playback Controls */}
             <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                size="sm"
-                onClick={togglePlayback}
-                disabled={isExporting}
-                className={
-                  flyoverState.isPlaying
-                    ? "bg-orange-600 hover:bg-orange-700"
-                    : "bg-green-600 hover:bg-green-700"
-                }
-              >
-                {flyoverState.isPlaying ? (
-                  <Pause className="w-4 h-4 mr-1" />
-                ) : (
-                  <Play className="w-4 h-4 mr-1" />
-                )}
-                {flyoverState.isPlaying ? t.pause : t.play}
-              </Button>
+              {!exportProgress.isExporting ? (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={togglePlayback}
+                    className={
+                      flyoverState.isPlaying
+                        ? "bg-orange-600 hover:bg-orange-700"
+                        : "bg-green-600 hover:bg-green-700"
+                    }
+                  >
+                    {flyoverState.isPlaying ? (
+                      <Pause className="w-4 h-4 mr-1" />
+                    ) : (
+                      <Play className="w-4 h-4 mr-1" />
+                    )}
+                    {flyoverState.isPlaying ? t.pause : t.play}
+                  </Button>
 
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={resetFlyover}
-                disabled={isExporting}
-              >
-                <RotateCcw className="w-4 h-4 mr-1" />
-                {t.reset}
-              </Button>
+                  <Button size="sm" variant="outline" onClick={resetFlyover}>
+                    <RotateCcw className="w-4 h-4 mr-1" />
+                    {t.reset}
+                  </Button>
 
-              {/* Orientation Toggle */}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={toggleOrientation}
-                disabled={isExporting}
-                title={orientation === "landscape" ? t.landscape : t.portrait}
-              >
-                {orientation === "landscape" ? (
-                  <Monitor className="w-4 h-4 mr-1" />
-                ) : (
-                  <Smartphone className="w-4 h-4 mr-1" />
-                )}
-                {orientation === "landscape" ? "16:9" : "9:16"}
-              </Button>
+                  {/* Orientation Toggle */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={toggleOrientation}
+                    title={
+                      orientation === "landscape" ? t.landscape : t.portrait
+                    }
+                  >
+                    {orientation === "landscape" ? (
+                      <Monitor className="w-4 h-4 mr-1" />
+                    ) : (
+                      <Smartphone className="w-4 h-4 mr-1" />
+                    )}
+                    {orientation === "landscape" ? "16:9" : "9:16"}
+                  </Button>
 
-              {/* Export Duration Selector */}
-              <select
-                value={exportDuration}
-                onChange={(e) =>
-                  handleExportDurationChange(Number(e.target.value))
-                }
-                className="px-2 py-1 text-sm border rounded"
-                disabled={isExporting}
-              >
-                <option value={15}>15s</option>
-                <option value={30}>30s</option>
-                <option value={60}>60s</option>
-                <option value={120}>120s</option>
-              </select>
-
-              {/* High Quality Export */}
-              <Button
-                size="sm"
-                onClick={startHighQualityExport}
-                disabled={isExporting || flyoverState.isPlaying}
-                className="bg-purple-600 hover:bg-purple-700"
-                title={t.hqExport}
-              >
-                {isExporting && exportType === "high-quality" ? (
-                  <>
-                    <Crown className="w-4 h-4 mr-1 animate-pulse" />
-                    {t.exporting}
-                  </>
-                ) : (
-                  <>
+                  {/* Export Controls */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleExportHQ}
+                    className="text-purple-600 border-purple-600 hover:bg-purple-50"
+                  >
                     <Crown className="w-4 h-4 mr-1" />
                     {t.exportHQ}
-                  </>
-                )}
-              </Button>
+                  </Button>
 
-              {/* Fast Export */}
-              <Button
-                size="sm"
-                onClick={startOrdinaryExport}
-                disabled={isExporting || flyoverState.isPlaying}
-                className="bg-blue-600 hover:bg-blue-700"
-                title={t.fastExport}
-              >
-                {isExporting && exportType === "ordinary" ? (
-                  <>
-                    <Zap className="w-4 h-4 mr-1 animate-bounce" />
-                    {t.exporting}
-                  </>
-                ) : (
-                  <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleExportFast}
+                    className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                  >
                     <Zap className="w-4 h-4 mr-1" />
                     {t.exportFast}
-                  </>
-                )}
-              </Button>
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleCancelExport}
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  {t.cancelExport}
+                </Button>
+              )}
             </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Information Panel */}
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600">
-              <div className="flex items-center gap-1">
-                <Play className="w-3 h-3" />
-                {t.preview}
+          {/* Export Progress */}
+          {exportProgress.isExporting && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-blue-800">
+                  {exportProgress.frame === exportProgress.totalFrames
+                    ? t.compilingVideo
+                    : t.exportingStatus}
+                </span>
+                <span className="text-xs text-blue-600">
+                  {t.capturingFrame} {exportProgress.frame} /{" "}
+                  {exportProgress.totalFrames}
+                </span>
               </div>
-              <div className="flex items-center gap-1">
-                <Crown className="w-3 h-3 text-purple-600" />
-                {t.hqExport}
+              <div className="w-full bg-blue-200 rounded-full h-3 mb-2">
+                <div
+                  className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                  style={{ width: `${exportProgress.percentage}%` }}
+                />
               </div>
-              <div className="flex items-center gap-1">
-                <Zap className="w-3 h-3 text-blue-600" />
-                {t.fastExport}
+              <div className="flex justify-between text-xs text-blue-600">
+                <span>{exportProgress.percentage}% complete</span>
+                <span>{t.keepTabActive}</span>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Export Error */}
+          {exportError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4 className="text-sm font-medium text-red-800 mb-1">
+                    Export Error
+                  </h4>
+                  <p className="text-red-700 text-sm">{exportError}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setExportError(null)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Information Panel */}
+          {!exportProgress.isExporting && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600">
+                <div className="flex items-center gap-1">
+                  <Play className="w-3 h-3" />
+                  {t.preview}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Crown className="w-3 h-3 text-purple-600" />
+                  {t.hqExport}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-blue-600" />
+                  {t.fastExport}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Progress Bar */}
           <div className="mb-4">
             <div className="flex justify-between text-sm text-gray-600 mb-1">
               <span>
-                {isExporting
-                  ? `${getExportingText()} ${Math.round(exportProgress * 100)}%`
-                  : t.progress}
+                {exportProgress.isExporting ? "Export Progress" : t.progress}
               </span>
-              {!isExporting && (
-                <span>Path Points: {validTrackpoints.length}</span>
-              )}
+              <span>Path Points: {validTrackpoints.length}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
                 className={`h-2 rounded-full transition-all duration-300 ${
-                  isExporting
-                    ? exportType === "high-quality"
-                      ? "bg-purple-600"
-                      : "bg-blue-600"
-                    : "bg-green-600"
+                  exportProgress.isExporting ? "bg-blue-600" : "bg-green-600"
                 }`}
                 style={{
-                  width: `${
-                    isExporting
-                      ? exportProgress * 100
-                      : flyoverState.isPlaying
-                      ? 50
-                      : 0
-                  }%`,
+                  width: exportProgress.isExporting
+                    ? `${exportProgress.percentage}%`
+                    : `${
+                        (flyoverState.currentTrackpointIndex /
+                          validTrackpoints.length) *
+                        100
+                      }%`,
                 }}
               />
             </div>
@@ -500,11 +551,11 @@ export function ThreeDStories({
                 m
               </span>
               <span>
-                {isExporting
-                  ? `Export: ${exportDuration}s ${
-                      exportType === "high-quality" ? "(60fps)" : "(24fps)"
-                    }`
-                  : `Flyover: 60s (30fps)`}
+                {exportProgress.isExporting
+                  ? `Exporting frame ${exportProgress.frame}`
+                  : flyoverState.isPlaying
+                  ? `Playing: ${flyoverState.currentTrackpointIndex}s`
+                  : `Flyover: 60s (30fps preview)`}
               </span>
             </div>
           </div>
@@ -515,24 +566,18 @@ export function ThreeDStories({
               className="relative w-full bg-gray-100 rounded-lg overflow-hidden"
               style={{
                 aspectRatio: orientation === "landscape" ? "16/9" : "9/16",
-                maxHeight: orientation === "landscape" ? "60vh" : "80vh",
-                maxWidth: orientation === "landscape" ? "80vw" : "60vw",
               }}
             >
               <FlyoverMap
+                ref={flyoverMapRef}
                 activity={enhancedActivity}
                 flyoverState={flyoverState}
                 onFlyoverEnd={handleFlyoverEnd}
-                onVideoExportStart={handleVideoExportStart}
-                onVideoExportProgress={handleVideoExportProgress}
-                onVideoExportComplete={handleVideoExportComplete}
-                triggerVideoExport={triggerVideoExport}
-                triggerOrdinaryExport={triggerOrdinaryExport}
-                isExporting={isExporting}
-                exportDuration={exportDuration}
-                exportType={exportType}
                 orientation={orientation}
                 resetSignal={resetAnimationTrigger}
+                onExportProgress={handleExportProgress}
+                onExportComplete={handleExportComplete}
+                onExportError={handleExportError}
                 className="absolute inset-0 w-full h-full"
               />
             </div>

@@ -9,7 +9,7 @@ const constants = {
   UNIT_INCHES: "inches",
   UNIT_CENTIMETERS: "centimeters",
   UNIT_MILLIMETERS: "millimeters",
-  DEFAULT_DURATION_SECONDS: 10,
+  DEFAULT_DURATION_SECONDS: 360,
 };
 
 export default constants;
