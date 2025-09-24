@@ -1,13 +1,13 @@
 // hooks/useVideoExport.ts
-import { useCallback, useState, useRef } from 'react';
-import type mapboxgl from 'mapbox-gl';
+import { useCallback, useState, useRef } from "react";
+import type mapboxgl from "mapbox-gl";
 
 interface ExportSettings {
   width: number;
   height: number;
   fps: number;
   duration: number;
-  quality?: 'high' | 'fast';
+  quality?: "high" | "fast";
 }
 
 interface ExportProgress {
@@ -34,20 +34,20 @@ export const useVideoExport = () => {
     (map: mapboxgl.Map, timeout = 5000): Promise<void> => {
       return new Promise((resolve, reject) => {
         const startTime = Date.now();
-        
+
         const checkTiles = () => {
           const isReady = map.loaded() && map.areTilesLoaded();
-          
+
           if (isReady) {
             setTimeout(() => resolve(), 100);
           } else if (Date.now() - startTime > timeout) {
-            console.warn('Timeout waiting for tiles, proceeding anyway');
+            console.warn("Timeout waiting for tiles, proceeding anyway");
             resolve();
           } else {
             setTimeout(checkTiles, 50);
           }
         };
-        
+
         checkTiles();
       });
     },
@@ -58,10 +58,10 @@ export const useVideoExport = () => {
   const createVideoFromFrames = useCallback(
     (frames: string[], fps: number): Promise<Blob> => {
       return new Promise((resolve, reject) => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
         if (!ctx) {
-          reject(new Error('Could not get canvas context'));
+          reject(new Error("Could not get canvas context"));
           return;
         }
 
@@ -73,7 +73,7 @@ export const useVideoExport = () => {
 
           const stream = canvas.captureStream(fps);
           const mediaRecorder = new MediaRecorder(stream, {
-            mimeType: 'video/webm;codecs=vp9',
+            mimeType: "video/webm;codecs=vp9",
             videoBitsPerSecond: 5000000,
           });
 
@@ -86,7 +86,7 @@ export const useVideoExport = () => {
           };
 
           mediaRecorder.onstop = () => {
-            const blob = new Blob(chunks, { type: 'video/webm' });
+            const blob = new Blob(chunks, { type: "video/webm" });
             resolve(blob);
           };
 
@@ -124,6 +124,7 @@ export const useVideoExport = () => {
     []
   );
 
+  // hooks/useVideoExport.ts - Update the exportVideo function
   const exportVideo = useCallback(
     async (
       mapInstance: mapboxgl.Map,
@@ -133,9 +134,11 @@ export const useVideoExport = () => {
     ): Promise<Blob> => {
       const { fps, duration } = settings;
       const mainFrames = Math.floor(fps * duration);
-      const finalViewFrames = Math.floor(fps * 3); // 3 seconds for final view
-      const totalFrames = mainFrames + finalViewFrames;
-      
+      const finalViewTransitionFrames = Math.floor(fps * 2); // 2 seconds for transition
+      const finalViewHoldFrames = Math.floor(fps * 3); // 3 seconds holding final view
+      const totalFrames =
+        mainFrames + finalViewTransitionFrames + finalViewHoldFrames;
+
       setExportProgress({
         frame: 0,
         totalFrames,
@@ -144,8 +147,10 @@ export const useVideoExport = () => {
       });
 
       try {
-        const canvas = mapInstance.getCanvasContainer().querySelector('canvas') as HTMLCanvasElement;
-        if (!canvas) throw new Error('Canvas not found');
+        const canvas = mapInstance
+          .getCanvasContainer()
+          .querySelector("canvas") as HTMLCanvasElement;
+        if (!canvas) throw new Error("Canvas not found");
 
         // Store original dimensions
         const container = mapInstance.getContainer();
@@ -156,7 +161,7 @@ export const useVideoExport = () => {
         // Resize container to match target aspect ratio
         const targetAspectRatio = settings.width / settings.height;
         const currentAspectRatio = containerRect.width / containerRect.height;
-        
+
         let newContainerWidth = containerRect.width;
         let newContainerHeight = containerRect.height;
 
@@ -171,27 +176,23 @@ export const useVideoExport = () => {
         container.style.width = `${newContainerWidth}px`;
         container.style.height = `${newContainerHeight}px`;
         mapInstance.resize();
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
 
         const capturedFrames: string[] = [];
 
         // Capture main animation frames
         for (let frame = 0; frame < mainFrames; frame++) {
           try {
-            // Execute animation for this frame
             await animateFunction(frame, mainFrames);
-            
-            // Wait for tiles and rendering to complete
             await waitForTilesLoaded(mapInstance);
-            
-            // Additional wait to ensure rendering is complete
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            // Capture frame as data URL
-            const dataURL = canvas.toDataURL('image/webp', settings.quality === 'high' ? 0.95 : 0.8);
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            const dataURL = canvas.toDataURL(
+              "image/webp",
+              settings.quality === "high" ? 0.95 : 0.8
+            );
             capturedFrames.push(dataURL);
-            
-            // Update progress
+
             setExportProgress({
               frame: frame + 1,
               totalFrames,
@@ -204,22 +205,48 @@ export const useVideoExport = () => {
           }
         }
 
-        // Show final view and capture those frames
-        await showFinalViewFunction();
-        
-        // Wait for final view transition to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Start final view transition (this will begin the flyTo animation)
+        showFinalViewFunction(); // Don't await - let it run async
 
-        // Capture final view frames (static frames showing the complete route)
-        for (let frame = 0; frame < finalViewFrames; frame++) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-          const dataURL = canvas.toDataURL('image/webp', settings.quality === 'high' ? 0.95 : 0.8);
+        // Capture transition frames
+        for (let frame = 0; frame < finalViewTransitionFrames; frame++) {
+          await new Promise((resolve) => setTimeout(resolve, 80)); // Slightly faster to capture the transition
+          const dataURL = canvas.toDataURL(
+            "image/webp",
+            settings.quality === "high" ? 0.95 : 0.8
+          );
           capturedFrames.push(dataURL);
-          
+
           setExportProgress({
             frame: mainFrames + frame + 1,
             totalFrames,
-            percentage: Math.round(((mainFrames + frame + 1) / totalFrames) * 100),
+            percentage: Math.round(
+              ((mainFrames + frame + 1) / totalFrames) * 100
+            ),
+            isExporting: true,
+          });
+        }
+
+        // Wait a bit more for transition to complete
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Capture final view hold frames (static frames showing the complete route)
+        for (let frame = 0; frame < finalViewHoldFrames; frame++) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          const dataURL = canvas.toDataURL(
+            "image/webp",
+            settings.quality === "high" ? 0.95 : 0.8
+          );
+          capturedFrames.push(dataURL);
+
+          setExportProgress({
+            frame: mainFrames + finalViewTransitionFrames + frame + 1,
+            totalFrames,
+            percentage: Math.round(
+              ((mainFrames + finalViewTransitionFrames + frame + 1) /
+                totalFrames) *
+                100
+            ),
             isExporting: true,
           });
         }
@@ -231,7 +258,7 @@ export const useVideoExport = () => {
 
         // Convert captured frames to video
         const videoBlob = await createVideoFromFrames(capturedFrames, fps);
-        
+
         setExportProgress({
           frame: 0,
           totalFrames: 0,
@@ -246,7 +273,7 @@ export const useVideoExport = () => {
           totalFrames: 0,
           percentage: 0,
           isExporting: false,
-          error: error instanceof Error ? error.message : 'Export failed',
+          error: error instanceof Error ? error.message : "Export failed",
         });
         throw error;
       }
@@ -255,7 +282,10 @@ export const useVideoExport = () => {
   );
 
   const cancelExport = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
       mediaRecorderRef.current.stop();
     }
     setExportProgress({

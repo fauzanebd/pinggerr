@@ -19,6 +19,7 @@ import type {
   FlyoverState,
 } from "@/types/strava";
 import constants from "@/lib/constants";
+import { StatsOverlay } from "@/components/StatsOverlay";
 
 interface FlyoverMapProps {
   activity: StravaActivity;
@@ -26,7 +27,7 @@ interface FlyoverMapProps {
   flyoverState: FlyoverState;
   onFlyoverEnd?: () => void;
   className?: string;
-  orientation?: "landscape" | "portrait";
+  orientation?: "landscape" | "portrait" | "square" | "fourFive";
   resetSignal?: number;
   onExportProgress?: (progress: {
     frame: number;
@@ -80,6 +81,14 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
     );
     const validTrackpoints = useRef<ActivityTrackpoint[]>([]);
     const isAnimating = useRef<boolean>(false);
+
+    // Add state for current trackpoint index to trigger re-renders
+    const [currentTrackpointIndex, setCurrentTrackpointIndex] = useState(0);
+    // Keep the ref for internal animation logic that needs immediate access
+    const currentTrackpointIndexRef = useRef<number>(0);
+
+    // Also make isInFinalView a state to trigger re-renders
+    const [isInFinalView, setIsInFinalView] = useState(false);
 
     // Linear interpolation function for smooth camera movement
     const lerp = (start: number, end: number, amt: number): number => {
@@ -149,7 +158,6 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
     );
 
     // Enhanced animation function for export (no smoothing, precise positioning)
-    // In FlyoverMap component, update the animateExportFrame function
     const animateExportFrame = useCallback(
       async (frame: number, totalFrames: number): Promise<void> => {
         if (
@@ -169,10 +177,16 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         const pitch = constants.PITCH_START;
         const altitude = constants.ALTITUDE_START;
 
-        // Calculate animation phase for this frame
         const animationPhase = Math.min(frame / (totalFrames - 1), 1);
 
-        // Calculate position along path
+        // Calculate current trackpoint index based on animation phase
+        const targetIndex = Math.floor(
+          animationPhase * (validTrackpoints.current.length - 1)
+        );
+        // Update both ref and state
+        currentTrackpointIndexRef.current = targetIndex;
+        setCurrentTrackpointIndex(targetIndex);
+
         const currentDistance = pathDistance.current * animationPhase;
         const alongPath = turf.along(pathLineString, currentDistance, {
           units: "kilometers",
@@ -185,11 +199,10 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         const [lng, lat] = alongPath.geometry.coordinates;
         const targetPosition = { lng, lat };
 
-        // Update visual elements IMMEDIATELY (no waiting here)
         map.current.setPaintProperty("gps-path-line", "line-gradient", [
           "step",
           ["line-progress"],
-          "#F99FD2",
+          "#FFEC51",
           animationPhase,
           "rgba(0, 0, 0, 0)",
         ]);
@@ -211,7 +224,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           bearing,
           targetPosition,
           altitude,
-          false // No smoothing for export
+          false
         );
 
         if (
@@ -235,8 +248,6 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           );
           map.current.setFreeCameraOptions(camera);
         }
-
-        // No waiting here - the waiting happens in the export loop AFTER this function
       },
       [computeCameraPosition]
     );
@@ -247,6 +258,9 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           resolve();
           return;
         }
+
+        // Set final view flag
+        setIsInFinalView(true);
 
         const bounds = new mapboxgl.LngLatBounds();
         validTrackpoints.current.forEach((tp) => {
@@ -265,22 +279,20 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           return;
         }
 
-        // Use flyTo and wait for it to complete
+        // Use smooth flyTo animation
         map.current.flyTo({
           center,
           zoom,
           pitch: 0,
           bearing: constants.BEARING_START,
-          speed: 1.2,
-          curve: 1.5,
+          speed: 1.0, // Adjust speed for export timing
+          curve: 1.2,
           easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
           essential: true,
         });
 
-        // Wait for the flyTo animation to complete
-        map.current.once("moveend", () => {
-          setTimeout(() => resolve(), 500); // Additional wait to ensure everything is settled
-        });
+        // Don't wait for completion - let the export loop capture the transition
+        setTimeout(() => resolve(), 100);
       });
     }, []);
 
@@ -293,8 +305,22 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         }
 
         const settings = {
-          width: orientation === "landscape" ? 1920 : 1080,
-          height: orientation === "landscape" ? 1080 : 1920,
+          width:
+            orientation === "landscape"
+              ? 1920
+              : orientation === "portrait"
+              ? 1080
+              : orientation === "fourFive"
+              ? 1080
+              : 1080, // square
+          height:
+            orientation === "landscape"
+              ? 1080
+              : orientation === "portrait"
+              ? 1920
+              : orientation === "fourFive"
+              ? 1350 // 4:5
+              : 1080, // square
           fps: quality === "high" ? 60 : 24,
           duration: constants.DEFAULT_DURATION_SECONDS, // Main animation duration
           quality,
@@ -346,12 +372,11 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             !validTrackpoints.current.length ||
             pathDistance.current === 0
           ) {
-            console.warn(
-              "resolved because: no map, no valid trackpoints, or no path distance"
-            );
             resolve();
             return;
           }
+
+          setIsInFinalView(false); // Reset final view flag
 
           const coordinates = validTrackpoints.current.map((tp) => [
             tp.longitude!,
@@ -363,48 +388,46 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           const altitude = constants.ALTITUDE_START;
 
           let startTime: number | null = null;
-          // let lastFrameTime = 0;
-          // const targetFrameTime = 1000 / 30; // 30 fps for preview
+          let lastFrameTime = 0;
+          const targetFrameTime = 1000 / 30;
 
           const animateFrame = async (currentTime: number) => {
             if (!startTime) startTime = currentTime;
-            // Throttle frame rate
-            // if (currentTime - lastFrameTime < targetFrameTime) {
-            //   animationFrame.current = requestAnimationFrame(animateFrame);
-            //   return;
-            // }
-            // lastFrameTime = currentTime;
+            if (currentTime - lastFrameTime < targetFrameTime) {
+              animationFrame.current = requestAnimationFrame(animateFrame);
+              return;
+            }
+            lastFrameTime = currentTime;
 
-            // Calculate animation phase based on resume startPhase only
             const animationPhase = Math.min(
               (currentTime - startTime) / duration,
               1
             );
 
-            // Check if we should pause
             if (!flyoverState.isPlaying) {
-              console.warn("resolved because: not playing and not exporting");
               resolve();
               return;
             }
 
-            // completed
             if (animationPhase >= 1) {
-              console.warn(
-                "resolved because: animation phase >= 1 (completed)"
-              );
               resolve();
               return;
             }
 
-            // Calculate position along path
+            // Update current trackpoint index
+            const targetIndex = Math.floor(
+              animationPhase * (validTrackpoints.current.length - 1)
+            );
+            // Update both ref and state
+            currentTrackpointIndexRef.current = targetIndex;
+            setCurrentTrackpointIndex(targetIndex);
+
             const currentDistance = pathDistance.current * animationPhase;
             const alongPath = turf.along(pathLineString, currentDistance, {
               units: "kilometers",
             });
 
             if (!alongPath?.geometry?.coordinates) {
-              console.warn("resolved because: no along path coordinates");
               resolve();
               return;
             }
@@ -412,12 +435,11 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             const [lng, lat] = alongPath.geometry.coordinates;
             const targetPosition = { lng, lat };
 
-            // Update visual elements
             if (map.current) {
               map.current.setPaintProperty("gps-path-line", "line-gradient", [
                 "step",
                 ["line-progress"],
-                "#F99FD2",
+                "#FFEC51",
                 animationPhase,
                 "rgba(0, 0, 0, 0)",
               ]);
@@ -455,7 +477,6 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
                   targetElevation = elev;
                 }
 
-                // ensure camera altitude is above terrain
                 const cameraAltitudeAboveSea = targetElevation + altitude;
 
                 const camera = map.current.getFreeCameraOptions();
@@ -517,7 +538,10 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             style: "mapbox://styles/mapbox/satellite-streets-v12",
             // style: "mapbox://styles/mapbox/standard-satellite",
             center: [startCoord.longitude!, startCoord.latitude!],
-            zoom: orientation === "portrait" ? 14 : 15,
+            zoom:
+              orientation === "portrait" || orientation === "fourFive"
+                ? 16
+                : 17,
             pitch: constants.PITCH_START,
             bearing: constants.BEARING_START,
             antialias: true,
@@ -531,7 +555,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
               type: "raster-dem",
               url: "mapbox://mapbox.terrain-rgb",
               tileSize: 512,
-              maxzoom: 14,
+              // maxzoom: 14,
             });
             mapInstance.setTerrain({ source: "mapbox-dem" });
 
@@ -621,7 +645,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           source: "gps-path",
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": "#F99FD2",
+            "line-color": "#FFEC51",
             "line-width": 2,
             "line-opacity": 0.3,
           },
@@ -633,13 +657,13 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           source: "gps-path",
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": "#F99FD2",
+            "line-color": "#FFEC51",
             "line-width": 4,
             "line-opacity": 0.8,
             "line-gradient": [
               "step",
               ["line-progress"],
-              "#F99FD2",
+              "#FFEC51",
               0,
               "rgba(0, 0, 0, 0)",
             ],
@@ -661,7 +685,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           source: "progress-point",
           paint: {
             "circle-radius": 8,
-            "circle-color": "#165027",
+            "circle-color": "#0B0033",
             "circle-stroke-width": 2,
             "circle-stroke-color": "#FFFFFF",
           },
@@ -683,6 +707,8 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
     const showFinalView = useCallback(
       (validTrackpoints: ActivityTrackpoint[]) => {
         if (!map.current || !validTrackpoints?.length) return;
+
+        setIsInFinalView(true);
 
         const bounds = new mapboxgl.LngLatBounds();
         validTrackpoints.forEach((tp) => {
@@ -718,12 +744,16 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
       if (resetSignal === undefined) return;
 
       resetAnimationState();
+      setIsInFinalView(false);
+      // Reset both ref and state
+      currentTrackpointIndexRef.current = 0;
+      setCurrentTrackpointIndex(0);
 
       try {
         map.current.setPaintProperty("gps-path-line", "line-gradient", [
           "step",
           ["line-progress"],
-          "#F99FD2",
+          "#FFEC51",
           0,
           "rgba(0, 0, 0, 0)",
         ]);
@@ -849,6 +879,17 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           ref={mapContainer}
           className="w-full h-full rounded-lg overflow-hidden"
         />
+        {/* Stats Overlay - now receives reactive state */}
+        {isMapLoaded && validTrackpoints.current.length > 0 && (
+          <StatsOverlay
+            activity={activity}
+            currentTrackpoint={
+              validTrackpoints.current[currentTrackpointIndex] // Use state instead of ref
+            }
+            currentIndex={currentTrackpointIndex} // Use state instead of ref
+            isInFinalView={isInFinalView} // Use state instead of ref
+          />
+        )}
         {!isMapLoaded && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
             <div className="text-center">

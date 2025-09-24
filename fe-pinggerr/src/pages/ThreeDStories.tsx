@@ -10,6 +10,7 @@ import {
   Monitor,
   Smartphone,
   X,
+  Square,
 } from "lucide-react";
 import { FlyoverMap, type FlyoverMapHandle } from "@/components/FlyoverMapGG";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
@@ -42,9 +43,9 @@ export function ThreeDStories({
   const [error, setError] = useState<string | null>(null);
 
   // Orientation state
-  const [orientation, setOrientation] = useState<"landscape" | "portrait">(
-    "landscape"
-  );
+  const [orientation, setOrientation] = useState<
+    "landscape" | "portrait" | "square" | "fourFive"
+  >("landscape");
   const [resetAnimationTrigger, setResetAnimationTrigger] = useState(0);
 
   // Export state
@@ -93,6 +94,7 @@ export function ThreeDStories({
       fastExport: "Fast Export: 24fps, quick processing, good quality",
       landscape: "Landscape (16:9)",
       portrait: "Portrait (9:16)",
+      square: "Square (1:1)",
       keepTabActive: "Please keep this tab active during export",
       exportComplete: "Export complete! Video downloaded.",
       exportFailed: "Export failed. Please try again.",
@@ -123,6 +125,7 @@ export function ThreeDStories({
       fastExport: "Ekspor Cepat: 24fps, pemrosesan cepat, kualitas bagus",
       landscape: "Landscape (16:9)",
       portrait: "Portrait (9:16)",
+      square: "Square (1:1)",
       keepTabActive: "Harap jaga tab ini tetap aktif selama ekspor",
       exportComplete: "Ekspor selesai! Video telah diunduh.",
       exportFailed: "Ekspor gagal. Silakan coba lagi.",
@@ -181,7 +184,12 @@ export function ThreeDStories({
 
   const toggleOrientation = () => {
     if (exportProgress.isExporting) return; // Don't allow orientation change during export
-    setOrientation((prev) => (prev === "landscape" ? "portrait" : "landscape"));
+    setOrientation((prev) => {
+      if (prev === "landscape") return "portrait";
+      if (prev === "portrait") return "fourFive"; // 4:5 ratio
+      if (prev === "fourFive") return "square";
+      return "landscape"; // from square back to landscape
+    });
     setFlyoverState((prev) => ({
       ...prev,
       isPlaying: false,
@@ -403,15 +411,31 @@ export function ThreeDStories({
                     variant="outline"
                     onClick={toggleOrientation}
                     title={
-                      orientation === "landscape" ? t.landscape : t.portrait
+                      orientation === "landscape"
+                        ? t.landscape
+                        : orientation === "portrait"
+                        ? t.portrait
+                        : orientation === "fourFive"
+                        ? "4:5"
+                        : t.square
                     }
                   >
                     {orientation === "landscape" ? (
                       <Monitor className="w-4 h-4 mr-1" />
-                    ) : (
+                    ) : orientation === "portrait" ? (
                       <Smartphone className="w-4 h-4 mr-1" />
+                    ) : orientation === "fourFive" ? (
+                      <Square className="w-4 h-4 mr-1" />
+                    ) : (
+                      <Square className="w-4 h-4 mr-1" /> // You'll need to import Square icon
                     )}
-                    {orientation === "landscape" ? "16:9" : "9:16"}
+                    {orientation === "landscape"
+                      ? "16:9"
+                      : orientation === "portrait"
+                      ? "9:16"
+                      : orientation === "fourFive"
+                      ? "4:5"
+                      : "1:1"}
                   </Button>
 
                   {/* Export Controls */}
@@ -565,7 +589,14 @@ export function ThreeDStories({
             <div
               className="relative w-full bg-gray-100 rounded-lg overflow-hidden"
               style={{
-                aspectRatio: orientation === "landscape" ? "16/9" : "9/16",
+                aspectRatio:
+                  orientation === "landscape"
+                    ? "16/9"
+                    : orientation === "portrait"
+                    ? "9/16"
+                    : orientation === "fourFive"
+                    ? "4/5"
+                    : "1/1",
               }}
             >
               <FlyoverMap
