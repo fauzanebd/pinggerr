@@ -618,8 +618,8 @@ export function ModernMinimalistActivity({
           <div>
             <label className="text-sm font-medium mb-2 block">
               {language === "en"
-                ? "Choose up to 6 stats (two rows)"
-                : "Pilih hingga 6 statistik (dua baris)"}
+                ? "Choose up to 6 stats"
+                : "Pilih hingga 6 statistik"}
             </label>
             <div className="flex flex-wrap gap-2">
               {Object.entries(availableStats).map(([key, stat]) => {
@@ -651,24 +651,6 @@ export function ModernMinimalistActivity({
                 );
               })}
             </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-2 block">
-              {language === "en" ? "Decoration" : "Dekorasi"}
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showOrnament}
-                onChange={(e) => setShowOrnament(e.target.checked)}
-                className="rounded"
-              />
-              <span className="text-sm">
-                {language === "en"
-                  ? "Show star ornament"
-                  : "Tampilkan ornamen bintang"}
-              </span>
-            </label>
           </div>
           <div>
             <label className="text-sm font-medium mb-2 block">
