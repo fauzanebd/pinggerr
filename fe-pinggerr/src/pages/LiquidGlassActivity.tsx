@@ -12,7 +12,6 @@ import {
   Mountain,
   Calendar,
   Heart,
-  Timer,
 } from "lucide-react";
 
 // Strava logos
