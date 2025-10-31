@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Glasses, Palette } from "lucide-react";
+import { Glasses, LayoutGrid, Palette } from "lucide-react";
 import PinggerrLogo from "@/assets/pinggerr_logo.svg";
 
 import {
@@ -39,6 +39,19 @@ const visualizationTypes = [
     description: {
       en: "Liquid glass activity visualization",
       id: "Visualisasi aktivitas kaca cair",
+    },
+  },
+  {
+    id: "modern-minimalist-activity",
+    title: {
+      en: "Modern Minimalist Activity",
+      id: "Aktivitas Minimalist Modern",
+    },
+    path: "/visualization/modern-minimalist-activity",
+    icon: LayoutGrid,
+    description: {
+      en: "Modern minimalist activity visualization",
+      id: "Visualisasi aktivitas minimalist modern",
     },
   },
 

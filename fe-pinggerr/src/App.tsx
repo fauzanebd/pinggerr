@@ -27,6 +27,7 @@ import type { StravaActivity } from "@/types/strava";
 // Import Connect with Strava SVG
 import StravaConnectButton from "@/assets/btn_strava_connect_with_orange_x2.svg";
 import { LiquidGlassActivity } from "./pages/LiquidGlassActivity";
+import { ModernMinimalistActivity } from "./pages/ModernMinimalistActivity";
 
 function MainApp() {
   const { isAuthenticated, login, logout, error } = useStravaAuth();
@@ -157,6 +158,18 @@ function MainApp() {
             path="/visualization/liquid-glass-activity"
             element={
               <LiquidGlassActivity
+                activity={selectedActivity}
+                language={language}
+                onDownload={(imageUrl) => {
+                  console.log("Image downloaded:", imageUrl);
+                }}
+              />
+            }
+          />
+          <Route
+            path="/visualization/modern-minimalist-activity"
+            element={
+              <ModernMinimalistActivity
                 activity={selectedActivity}
                 language={language}
                 onDownload={(imageUrl) => {
