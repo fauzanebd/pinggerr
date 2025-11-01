@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PinggerrSidebar } from "./PinggerrSidebar";
 import type { StravaActivity } from "@/types/strava";
+import stravaLogo from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
 
 interface PinggerrLayoutProps {
   children: React.ReactNode;
@@ -91,22 +92,26 @@ export function PinggerrLayout({
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between text-base">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-4">
                   <span className="text-brand-pink">🏃‍♂️</span>
                   <span className="truncate">{activity.name}</span>
-                  <Badge className="bg-brand-green text-white text-xs">
+                  {/* <Badge className="bg-brand-green text-white text-xs">
                     {isAuthenticated ? "Strava" : "TCX"}
-                  </Badge>
+                  </Badge> */}
                   {activity.id && isAuthenticated && (
-                    <a
-                      href={`https://www.strava.com/activities/${activity.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-orange-600 hover:text-orange-700 font-medium underline"
-                      style={{ color: "#FC5200" }}
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        window.open(
+                          `https://www.strava.com/activities/${activity.id}`,
+                          "_blank",
+                          "noopener,noreferrer"
+                        )
+                      }
+                      className="text-xs hover:text-white font-medium bg-orange-500 hover:bg-orange-600 text-white"
                     >
                       {language === "en" ? "View on Strava" : "Lihat di Strava"}
-                    </a>
+                    </Button>
                   )}
                 </div>
               </CardTitle>
@@ -126,6 +131,12 @@ export function PinggerrLayout({
         <div className="flex flex-1 flex-col gap-4 p-4">
           {children}
           <div className="flex items-center justify-center gap-2 mt-4 text-muted-foreground">
+            <img
+              src={stravaLogo}
+              alt="Powered by Strava"
+              className="h-4 w-auto ml-2"
+            />
+            <span className="text-brand-pink">|</span>
             <span>
               {language === "en" ? "developed by" : "dikembangkan oleh"}
             </span>

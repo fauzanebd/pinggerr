@@ -23,6 +23,7 @@ import { ThreeDStories } from "@/pages/ThreeDStories";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
 import { processTcxFromFile } from "@/lib/tcxParser";
 import type { StravaActivity } from "@/types/strava";
+import stravaLogo from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
 
 // Import Connect with Strava SVG
 import StravaConnectButton from "@/assets/btn_strava_connect_with_orange_x2.svg";
@@ -641,6 +642,12 @@ function MainApp() {
 
         {/* Footer */}
         <div className="flex items-center justify-center gap-2 mt-4 text-muted-foreground">
+          <img
+            src={stravaLogo}
+            alt="Powered by Strava"
+            className="h-4 w-auto ml-2"
+          />
+          <span className="text-brand-pink">|</span>
           <span>
             {language === "en" ? "developed by" : "dikembangkan oleh"}
           </span>

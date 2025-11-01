@@ -14,8 +14,6 @@ import {
   Heart,
 } from "lucide-react";
 
-// Strava logos
-import stravaLogoWhite from "@/assets/api_logo_pwrdBy_strava_stack_white.svg";
 import stravaLogoOrange from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
 
 // Helper function to detect if activity data is from Strava (vs TCX)
@@ -64,12 +62,12 @@ export function LiquidGlassActivity({
   onDownload,
 }: LiquidGlassActivityProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const logoImageRef = useRef<HTMLImageElement | null>(null);
+  // const logoImageRef = useRef<HTMLImageElement | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
     null
   );
-  const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
+  // const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
   const [iconImages, setIconImages] = useState<{
     [key: string]: HTMLImageElement;
   }>({});
@@ -169,13 +167,13 @@ export function LiquidGlassActivity({
   // Load Strava logo, font, and icon images
   useEffect(() => {
     const loadAssets = async () => {
-      // Load Strava logo
-      const img = new Image();
-      img.onload = () => {
-        setLogoImage(img);
-      };
-      img.src = stravaLogoWhite;
-      logoImageRef.current = img;
+      // // Load Strava logo
+      // const img = new Image();
+      // img.onload = () => {
+      //   setLogoImage(img);
+      // };
+      // img.src = stravaLogoWhite;
+      // logoImageRef.current = img;
 
       // Load icon images with appropriate colors based on glass style
       const iconNames = [
@@ -214,10 +212,14 @@ export function LiquidGlassActivity({
 
   // Generate image when parameters change
   useEffect(() => {
-    if (logoImage && Object.keys(iconImages).length > 0) {
+    // if (logoImage && Object.keys(iconImages).length > 0) {
+    //   generateImage();
+    // }
+    if (Object.keys(iconImages).length > 0) {
       generateImage();
     }
-  }, [logoImage, iconImages, selectedStats, glassStyle, activity]);
+    // }, [logoImage, iconImages, selectedStats, glassStyle, activity]);
+  }, [iconImages, selectedStats, glassStyle, activity]);
 
   // Helper functions for formatting
   const formatDistance = (meters: number) => `${(meters / 1000).toFixed(1)} km`;
@@ -419,7 +421,8 @@ export function LiquidGlassActivity({
 
   // Generate the glass card image
   const generateImage = async () => {
-    if (!logoImage || Object.keys(iconImages).length === 0) return null;
+    // if (!logoImage || Object.keys(iconImages).length === 0) return null;
+    if (Object.keys(iconImages).length === 0) return null;
 
     setIsGenerating(true);
     try {
@@ -607,20 +610,20 @@ export function LiquidGlassActivity({
         }
       }
 
-      // Add Strava logo - positioned in bottom right
-      const logoWidth = 40;
-      const logoHeight = logoWidth * (30 / 88);
+      // // Add Strava logo - positioned in bottom right
+      // const logoWidth = 40;
+      // const logoHeight = logoWidth * (30 / 88);
 
-      tempLayer.add(
-        new Konva.Image({
-          image: logoImage,
-          x: cardX + cardWidth - logoWidth - 12,
-          y: cardY + cardHeight - logoHeight - 12,
-          width: logoWidth,
-          height: logoHeight,
-          opacity: 1,
-        })
-      );
+      // tempLayer.add(
+      //   new Konva.Image({
+      //     image: logoImage,
+      //     x: cardX + cardWidth - logoWidth - 12,
+      //     y: cardY + cardHeight - logoHeight - 12,
+      //     width: logoWidth,
+      //     height: logoHeight,
+      //     opacity: 1,
+      //   })
+      // );
 
       // Draw and export with transparent background
       tempLayer.draw();
@@ -673,13 +676,13 @@ export function LiquidGlassActivity({
             {language === "en"
               ? "Liquid Glass Activity Card"
               : "Kartu Aktivitas Kaca Cair"}
-            {isStravaData(activity) && (
+            {/* {isStravaData(activity) && (
               <img
                 src={stravaLogoOrange}
                 alt="Powered by Strava"
                 className="h-4 w-auto ml-2"
               />
-            )}
+            )} */}
           </div>
           <div className="flex items-center gap-2">
             <Button

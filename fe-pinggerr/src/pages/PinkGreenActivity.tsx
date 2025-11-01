@@ -39,17 +39,26 @@ export function PinkGreenActivity({
   const [selectedStats, setSelectedStats] = useState<string[]>(() => {
     // Default stats we want to show
     const defaultStats = ["distance", "pace", "time"];
-    
+
     // Filter to only include stats that are available for this activity
     const availableStatKeys = [
-      "distance", "pace", "time", "speed", "elevation", "date",
-      ...(activity.has_heartrate && activity.average_heartrate ? ["heartrate"] : [])
+      "distance",
+      "pace",
+      "time",
+      "speed",
+      "elevation",
+      "date",
+      ...(activity.has_heartrate && activity.average_heartrate
+        ? ["heartrate"]
+        : []),
     ];
-    
+
     // Return only the default stats that are actually available, up to 3
-    return defaultStats.filter(stat => availableStatKeys.includes(stat)).slice(0, 3);
+    return defaultStats
+      .filter((stat) => availableStatKeys.includes(stat))
+      .slice(0, 3);
   });
-  
+
   const [invertColors, setInvertColors] = useState(false);
 
   // Colors
@@ -63,23 +72,39 @@ export function PinkGreenActivity({
   useEffect(() => {
     // Reset selected stats when activity changes to ensure we don't have invalid selections
     const availableStatKeys = [
-      "distance", "pace", "time", "speed", "elevation", "date",
-      ...(activity.has_heartrate && activity.average_heartrate ? ["heartrate"] : [])
+      "distance",
+      "pace",
+      "time",
+      "speed",
+      "elevation",
+      "date",
+      ...(activity.has_heartrate && activity.average_heartrate
+        ? ["heartrate"]
+        : []),
     ];
-    
+
     // Filter current selection to only include available stats
-    const validSelectedStats = selectedStats.filter(stat => availableStatKeys.includes(stat));
-    
+    const validSelectedStats = selectedStats.filter((stat) =>
+      availableStatKeys.includes(stat)
+    );
+
     // If we have fewer than 3 valid stats selected, try to fill up to 3 with remaining available stats
     if (validSelectedStats.length < 3) {
-      const remainingStats = availableStatKeys.filter(stat => !validSelectedStats.includes(stat));
-      const additionalStats = remainingStats.slice(0, 3 - validSelectedStats.length);
+      const remainingStats = availableStatKeys.filter(
+        (stat) => !validSelectedStats.includes(stat)
+      );
+      const additionalStats = remainingStats.slice(
+        0,
+        3 - validSelectedStats.length
+      );
       const newSelectedStats = [...validSelectedStats, ...additionalStats];
-      
+
       if (JSON.stringify(newSelectedStats) !== JSON.stringify(selectedStats)) {
         setSelectedStats(newSelectedStats);
       }
-    } else if (JSON.stringify(validSelectedStats) !== JSON.stringify(selectedStats)) {
+    } else if (
+      JSON.stringify(validSelectedStats) !== JSON.stringify(selectedStats)
+    ) {
       setSelectedStats(validSelectedStats);
     }
   }, [activity]); // Only depend on activity, not selectedStats to avoid infinite loop
@@ -415,21 +440,21 @@ export function PinkGreenActivity({
       }
 
       // Add Strava logo
-      const logoAreaHeight = CANVAS_DIMENSIONS.height * 0.3;
-      const logoWidth = Math.min(CANVAS_DIMENSIONS.width * 0.15, 1000);
-      const logoHeight = logoWidth * (30 / 88);
-      const logoY =
-        CANVAS_DIMENSIONS.height - logoAreaHeight / 2 - logoHeight / 2;
+      // const logoAreaHeight = CANVAS_DIMENSIONS.height * 0.3;
+      // const logoWidth = Math.min(CANVAS_DIMENSIONS.width * 0.15, 1000);
+      // const logoHeight = logoWidth * (30 / 88);
+      // const logoY =
+      //   CANVAS_DIMENSIONS.height - logoAreaHeight / 2 - logoHeight / 2;
 
-      tempLayer.add(
-        new Konva.Image({
-          image: logoImage,
-          x: CANVAS_DIMENSIONS.width / 2 - logoWidth / 2,
-          y: logoY,
-          width: logoWidth,
-          height: logoHeight,
-        })
-      );
+      // tempLayer.add(
+      //   new Konva.Image({
+      //     image: logoImage,
+      //     x: CANVAS_DIMENSIONS.width / 2 - logoWidth / 2,
+      //     y: logoY,
+      //     width: logoWidth,
+      //     height: logoHeight,
+      //   })
+      // );
 
       // Draw and export
       tempLayer.draw();
@@ -493,13 +518,13 @@ export function PinkGreenActivity({
               ? "Pink Green Activity Visualization"
               : "Visualisasi Aktivitas Pink Green"}
             {/* Show Strava logo only if data is from Strava */}
-            {isStravaData(activity) && (
+            {/* {isStravaData(activity) && (
               <img
                 src={stravaLogoOrange}
                 alt="Powered by Strava"
                 className="h-4 w-auto ml-2"
               />
-            )}
+            )} */}
           </div>
           <div className="flex items-center gap-2">
             <Button

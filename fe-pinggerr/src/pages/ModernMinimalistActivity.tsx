@@ -587,13 +587,13 @@ export function ModernMinimalistActivity({
             {language === "en"
               ? "Modern Minimalist Activity"
               : "Aktivitas Minimalis Modern"}
-            {isStravaData(activity) && (
+            {/* {isStravaData(activity) && (
               <img
                 src={stravaLogoOrange}
                 alt="Powered by Strava"
                 className="h-4 w-auto ml-2"
               />
-            )}
+            )} */}
           </div>
           <div className="flex items-center gap-2">
             <Button
