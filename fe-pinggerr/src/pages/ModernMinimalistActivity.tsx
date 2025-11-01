@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { StravaActivity } from "@/types/strava";
 import { config } from "@/config/env";
-import stravaLogoOrange from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
+// import stravaLogoOrange from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
 
-const isStravaData = (activity: StravaActivity): boolean =>
-  activity.source === "strava";
+// const isStravaData = (activity: StravaActivity): boolean =>
+//   activity.source === "strava";
 
 interface ModernMinimalistActivityProps {
   activity: StravaActivity;

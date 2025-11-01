@@ -12,7 +12,7 @@ import { useStravaAuth } from "@/hooks/useStravaAuth";
 import type { StravaActivity, ActivityListProps } from "@/types/strava";
 
 // Import Strava logo
-import stravaLogo from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
+// import stravaLogo from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
 
 export const ActivityList: React.FC<ActivityListProps> = ({
   onSelectActivity,

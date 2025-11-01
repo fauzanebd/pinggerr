@@ -14,12 +14,12 @@ import {
   Heart,
 } from "lucide-react";
 
-import stravaLogoOrange from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
+// import stravaLogoOrange from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
 
 // Helper function to detect if activity data is from Strava (vs TCX)
-const isStravaData = (activity: StravaActivity): boolean => {
-  return activity.source === "strava";
-};
+// const isStravaData = (activity: StravaActivity): boolean => {
+//   return activity.source === "strava";
+// };
 
 // Helper function to convert Lucide icons to SVG data URLs
 const createIconImage = async (

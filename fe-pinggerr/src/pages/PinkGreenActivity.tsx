@@ -8,12 +8,12 @@ import { config } from "@/config/env";
 
 // Strava logos
 import stravaLogoWhite from "@/assets/api_logo_pwrdBy_strava_stack_white.svg";
-import stravaLogoOrange from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
+// import stravaLogoOrange from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
 
 // Helper function to detect if activity data is from Strava (vs TCX)
-const isStravaData = (activity: StravaActivity): boolean => {
-  return activity.source === "strava";
-};
+// const isStravaData = (activity: StravaActivity): boolean => {
+//   return activity.source === "strava";
+// };
 
 interface PinkGreenActivityProps {
   activity: StravaActivity;
