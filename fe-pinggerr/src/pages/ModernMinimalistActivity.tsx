@@ -125,7 +125,7 @@ export function ModernMinimalistActivity({
   // Track download
   const trackDownload = async () => {
     try {
-      await fetch(`${config.workerUrl}/count-lg-download`, {
+      await fetch(`${config.workerUrl}/count-mm-download`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -45,6 +45,12 @@ export default {
 				return handleTokenRefresh(request, env);
 			case '/count-pgs-download':
 				return handleTrackPgsDownload(request, env);
+
+			case '/count-mm-download':
+				return handleTrackMmDownload(request, env);
+			case '/count-lg-download':
+				return handleTrackLgDownload(request, env);
+
 			case '/count-3ds-download':
 				return handleTrack3dsDownload(request, env);
 			case '/stats':
@@ -245,6 +251,88 @@ async function handleTrackPgsDownload(request: Request, env: Env): Promise<Respo
 }
 
 /**
+ * Track a Modern Minimalist activity download event by incrementing the counter
+ */
+async function handleTrackMmDownload(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'POST') {
+		return new Response('Method not allowed', {
+			status: 405,
+			headers: corsHeaders,
+		});
+	}
+
+	try {
+		const downloadCountKey = 'total_mm_downloads';
+
+		// Get current count, default to 0 if not exists
+		const currentCountString = await env.PINGGERR_STATS.get(downloadCountKey);
+		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
+
+		// Increment and store the new count
+		const newCount = currentCount + 1;
+		await env.PINGGERR_STATS.put(downloadCountKey, newCount.toString());
+
+		// Return the new count
+		return new Response(
+			JSON.stringify({
+				success: true,
+				total_mm_downloads: newCount,
+			}),
+			{
+				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+			}
+		);
+	} catch (error) {
+		console.error('MM download tracking error:', error);
+		return new Response(JSON.stringify({ error: 'Internal server error' }), {
+			status: 500,
+			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+		});
+	}
+}
+
+/**
+ * Track a Liquid Glass activity download event by incrementing the counter
+ */
+async function handleTrackLgDownload(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'POST') {
+		return new Response('Method not allowed', {
+			status: 405,
+			headers: corsHeaders,
+		});
+	}
+
+	try {
+		const downloadCountKey = 'total_lg_downloads';
+
+		// Get current count, default to 0 if not exists
+		const currentCountString = await env.PINGGERR_STATS.get(downloadCountKey);
+		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
+
+		// Increment and store the new count
+		const newCount = currentCount + 1;
+		await env.PINGGERR_STATS.put(downloadCountKey, newCount.toString());
+
+		// Return the new count
+		return new Response(
+			JSON.stringify({
+				success: true,
+				total_lg_downloads: newCount,
+			}),
+			{
+				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+			}
+		);
+	} catch (error) {
+		console.error('LG download tracking error:', error);
+		return new Response(JSON.stringify({ error: 'Internal server error' }), {
+			status: 500,
+			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+		});
+	}
+}
+
+/**
  * Track a 3D Stories download event by incrementing the counter
  */
 async function handleTrack3dsDownload(request: Request, env: Env): Promise<Response> {
@@ -299,9 +387,13 @@ async function handleGetStats(request: Request, env: Env): Promise<Response> {
 	try {
 		// Get all download counts
 		const pgsDownloadsString = await env.PINGGERR_STATS.get('total_pgs_downloads');
+		const mmDownloadsString = await env.PINGGERR_STATS.get('total_mm_downloads');
+		const lgDownloadsString = await env.PINGGERR_STATS.get('total_lg_downloads');
 		const threeDsDownloadsString = await env.PINGGERR_STATS.get('total_3ds_downloads');
 
 		const pgsDownloads = pgsDownloadsString ? parseInt(pgsDownloadsString, 10) : 0;
+		const mmDownloads = mmDownloadsString ? parseInt(mmDownloadsString, 10) : 0;
+		const lgDownloads = lgDownloadsString ? parseInt(lgDownloadsString, 10) : 0;
 		const threeDsDownloads = threeDsDownloadsString ? parseInt(threeDsDownloadsString, 10) : 0;
 
 		// Get current month's map loads
@@ -315,6 +407,8 @@ async function handleGetStats(request: Request, env: Env): Promise<Response> {
 		return new Response(
 			JSON.stringify({
 				total_pgs_downloads: pgsDownloads,
+				total_mm_downloads: mmDownloads,
+				total_lg_downloads: lgDownloads,
 				total_3ds_downloads: threeDsDownloads,
 				map_loads_this_month: mapLoads,
 				month_key: monthKey,
