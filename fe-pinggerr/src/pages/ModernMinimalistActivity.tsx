@@ -87,8 +87,9 @@ export function ModernMinimalistActivity({
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
+    const secondsTime = seconds - minutes * 60;
     if (hours > 0) return `${hours}:${minutes.toString().padStart(2, "0")}`;
-    return `${minutes}:${"00"}`;
+    return `${minutes}:${secondsTime.toString().padStart(2, "0")}`;
   };
 
   const formatPace = (activity: StravaActivity) => {
@@ -111,7 +112,7 @@ export function ModernMinimalistActivity({
     }
   };
   const formatSpeed = (distanceMeters: number, timeSeconds: number) =>
-    (distanceMeters / 1000 / (timeSeconds / 3600)).toFixed(1);
+    (distanceMeters / 1000 / (timeSeconds / 3600)).toFixed(2);
   const formatElevationNumber = (meters: number) => `${Math.round(meters)}`;
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("en-US", {

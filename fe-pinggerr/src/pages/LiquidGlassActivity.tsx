@@ -227,7 +227,9 @@ export function LiquidGlassActivity({
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    const secondsTime = seconds - minutes * 60;
+    if (hours > 0) return `${hours}h ${minutes.toString().padStart(2, "0")}m`;
+    return `${minutes}m ${secondsTime.toString().padStart(2, "0")}s`;
   };
 
   const formatPace = (activity: StravaActivity) => {
