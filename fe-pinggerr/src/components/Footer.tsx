@@ -10,7 +10,6 @@ export function Footer({ language, className = "" }: FooterProps) {
     <div
       className={`flex flex-col sm:flex-row items-center justify-center gap-2 mt-4 text-muted-foreground ${className}`}
     >
-      {/* Strava logo - on its own row on small screens */}
       <div className="flex justify-center sm:justify-start">
         <img
           src={stravaLogo}
@@ -19,10 +18,8 @@ export function Footer({ language, className = "" }: FooterProps) {
         />
       </div>
 
-      {/* Separator - only visible on large screens */}
       <span className="hidden sm:inline text-brand-pink">|</span>
 
-      {/* Developer info - stays together in one row on small screens */}
       <div className="flex items-center justify-center gap-2">
         <span>{language === "en" ? "developed by" : "dikembangkan oleh"}</span>
         <a
