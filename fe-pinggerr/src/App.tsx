@@ -39,6 +39,8 @@ function MainApp() {
   const [isProcessingTcx, setIsProcessingTcx] = useState<boolean>(false);
   const [tcxError, setTcxError] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState<boolean>(false);
+  const [showDisconnectNotice, setShowDisconnectNotice] =
+    useState<boolean>(false);
   const [language, setLanguage] = useState<"en" | "id">("en");
   const location = useLocation();
   const navigate = useNavigate();
@@ -72,6 +74,11 @@ function MainApp() {
   const handleLogoClick = () => {
     // for now, just go back to the list
     handleBackToList();
+  };
+
+  const handleDisconnect = () => {
+    setShowDisconnectNotice(true);
+    logout();
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -260,6 +267,55 @@ function MainApp() {
         <div className="max-w-2xl mx-auto">
           {!isAuthenticated ? (
             <div className="space-y-6">
+              {showDisconnectNotice && (
+                <Card className="border-amber-200 bg-amber-50">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowDisconnectNotice(false)}
+                        aria-label={
+                          language === "en"
+                            ? "Dismiss notice"
+                            : "Tutup pemberitahuan"
+                        }
+                        className="text-amber-800/70 hover:text-amber-900 text-xs px-2 py-1 rounded hover:bg-amber-100 border border-transparent hover:border-amber-200"
+                      >
+                        {language === "en" ? "Close" : "Tutup"}
+                      </button>
+                    </div>
+                    <div className="space-y-2 text-amber-900 text-m">
+                      <p className="font-medium">
+                        {language === "en"
+                          ? "You’re signed out of Pinggerr, but still connected on Strava."
+                          : "Anda sudah keluar dari Pinggerr, tetapi masih terhubung di Strava."}
+                      </p>
+                      <p>
+                        {language === "en"
+                          ? "To fully revoke access: open Strava (desktop) → Settings → My Apps, find ‘Pinggerr’, then click Revoke Access."
+                          : "Untuk mencabut akses sepenuhnya: buka Strava (desktop) → Settings → My Apps, cari ‘Pinggerr’, lalu klik Revoke Access."}
+                      </p>
+                      <p className="text-amber-800/80 text-sm">
+                        {language === "en"
+                          ? "Note: Strava doesn’t provide apps a way to remotely disconnect your Strava account — revocation must be done in Strava."
+                          : "Catatan: Strava tidak menyediakan cara bagi aplikasi untuk memutuskan akun Strava Anda dari jarak jauh — pencabutan harus dilakukan di Strava."}
+                      </p>
+                      <div className="pt-1">
+                        <a
+                          href="https://www.strava.com/settings/apps"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center px-3 py-1.5 text-sm rounded-md border border-amber-300 text-amber-900 hover:bg-amber-100"
+                        >
+                          {language === "en"
+                            ? "Open Strava My Apps"
+                            : "Buka Strava My Apps"}
+                        </a>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               {/* Upload Options Header */}
               <Card>
                 <CardHeader className="text-center">
@@ -623,7 +679,7 @@ function MainApp() {
                       </Badge>
                     </div>
                     <Button
-                      onClick={logout}
+                      onClick={handleDisconnect}
                       variant="outline"
                       size="sm"
                       className="text-muted-foreground hover:text-foreground self-start sm:self-auto"
