@@ -245,18 +245,26 @@ export function ModernMinimalistActivity({
       const canvasHeight = CANVAS_DIMENSIONS.height + topExtra;
       const yOffset = topExtra;
 
-      // Add a very subtle transparent background to anchor transparency for Instagram Stories
-      // This prevents Instagram from defaulting to white background
-      tempLayer.add(
-        new Konva.Rect({
-          x: 0,
-          y: 0,
-          width: dynamicWidth,
-          height: canvasHeight,
-          fill: "rgba(0, 0, 0, 0.001)", // Nearly invisible but present
-          listening: false,
-        })
-      );
+      // Add invisible anchor points at canvas corners for Instagram Stories transparency
+      // This helps Instagram preserve transparency instead of defaulting to white background
+      const anchorSize = 1;
+      [
+        [0, 0],
+        [dynamicWidth - anchorSize, 0],
+        [0, canvasHeight - anchorSize],
+        [dynamicWidth - anchorSize, canvasHeight - anchorSize],
+      ].forEach(([x, y]) => {
+        tempLayer.add(
+          new Konva.Rect({
+            x,
+            y,
+            width: anchorSize,
+            height: anchorSize,
+            fill: "rgba(0, 0, 0, 0.003)", // Barely visible anchors
+            listening: false,
+          })
+        );
+      });
       const title =
         activity.name && activity.name.trim().length > 0
           ? activity.name.trim()
@@ -270,6 +278,9 @@ export function ModernMinimalistActivity({
           fontFamily: "PP Telegraf",
           fontStyle: "normal",
           fill: COLORS.text,
+          shadowColor: "rgba(0, 0, 0, 0.1)",
+          shadowBlur: 2,
+          shadowOffset: { x: 0, y: 1 },
           listening: false,
         })
       );
@@ -356,6 +367,9 @@ export function ModernMinimalistActivity({
                   strokeWidth: 2,
                   lineJoin: "round",
                   lineCap: "round",
+                  shadowColor: "rgba(0, 0, 0, 0.15)",
+                  shadowBlur: 1,
+                  shadowOffset: { x: 0, y: 1 },
                   listening: false,
                 })
               );
@@ -426,6 +440,9 @@ export function ModernMinimalistActivity({
               cornerRadius: capsuleHeight / 2,
               stroke: COLORS.capsuleStroke,
               strokeWidth: 2,
+              shadowColor: "rgba(0, 0, 0, 0.1)",
+              shadowBlur: 1,
+              shadowOffset: { x: 0, y: 1 },
               listening: false,
             })
           );
@@ -442,6 +459,9 @@ export function ModernMinimalistActivity({
               fontStyle: "normal",
               align: "center",
               fill: COLORS.text,
+              shadowColor: "rgba(0, 0, 0, 0.08)",
+              shadowBlur: 1,
+              shadowOffset: { x: 0, y: 0.5 },
               listening: false,
             })
           );
@@ -457,6 +477,9 @@ export function ModernMinimalistActivity({
               fontSize: numberFontSize,
               fontFamily: "PP Telegraf",
               fill: COLORS.text,
+              shadowColor: "rgba(0, 0, 0, 0.1)",
+              shadowBlur: 2,
+              shadowOffset: { x: 0, y: 1 },
               listening: false,
             })
           );
@@ -500,6 +523,9 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
+            shadowColor: "rgba(0, 0, 0, 0.12)",
+            shadowBlur: 1,
+            shadowOffset: { x: 0, y: 1 },
             listening: false,
           })
         );
@@ -515,6 +541,9 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
+            shadowColor: "rgba(0, 0, 0, 0.12)",
+            shadowBlur: 1,
+            shadowOffset: { x: 0, y: 1 },
             listening: false,
           })
         );
@@ -530,6 +559,9 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
+            shadowColor: "rgba(0, 0, 0, 0.12)",
+            shadowBlur: 1,
+            shadowOffset: { x: 0, y: 1 },
             listening: false,
           })
         );
@@ -545,6 +577,9 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
+            shadowColor: "rgba(0, 0, 0, 0.12)",
+            shadowBlur: 1,
+            shadowOffset: { x: 0, y: 1 },
             listening: false,
           })
         );
