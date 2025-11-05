@@ -244,6 +244,19 @@ export function ModernMinimalistActivity({
       }
       const canvasHeight = CANVAS_DIMENSIONS.height + topExtra;
       const yOffset = topExtra;
+
+      // Add a very subtle transparent background to anchor transparency for Instagram Stories
+      // This prevents Instagram from defaulting to white background
+      tempLayer.add(
+        new Konva.Rect({
+          x: 0,
+          y: 0,
+          width: dynamicWidth,
+          height: canvasHeight,
+          fill: "rgba(0, 0, 0, 0.001)", // Nearly invisible but present
+          listening: false,
+        })
+      );
       const title =
         activity.name && activity.name.trim().length > 0
           ? activity.name.trim()
@@ -536,18 +549,6 @@ export function ModernMinimalistActivity({
           })
         );
       }
-
-      tempLayer.add(
-        new Konva.Rect({
-          x: 0,
-          y: 0,
-          width: dynamicWidth,
-          height: tempStage.height(),
-          fill: "rgba(128,128,128,0.001)",
-          listening: false,
-        })
-      );
-      tempLayer.moveToBottom();
 
       // Draw and export with transparent background
       tempLayer.draw();
