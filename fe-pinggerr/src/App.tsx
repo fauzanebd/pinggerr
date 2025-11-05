@@ -112,13 +112,33 @@ function MainApp() {
 
   // If an activity is selected, show the visualization layout
   if (selectedActivity) {
-    const currentVisualizationType = location.pathname.includes("3d-stories")
-      ? language === "en"
-        ? "3D Stories"
-        : "Cerita 3D"
-      : language === "en"
-      ? "PinkGreen Activity"
-      : "Aktivitas PinkGreen";
+    // Determine current visualization type based on pathname
+    const getVisualizationType = (
+      pathname: string,
+      lang: "en" | "id"
+    ): string => {
+      if (pathname.includes("3d-stories")) {
+        return lang === "en" ? "3D Stories" : "Cerita 3D";
+      }
+      if (pathname.includes("liquid-glass-activity")) {
+        return lang === "en" ? "Liquid Glass Activity" : "Aktivitas Kaca Cair";
+      }
+      if (pathname.includes("modern-minimalist-activity")) {
+        return lang === "en"
+          ? "Modern Minimalist Activity"
+          : "Aktivitas Minimalist Modern";
+      }
+      if (pathname.includes("pinkgreen-activity")) {
+        return lang === "en" ? "PinkGreen Activity" : "Aktivitas PinkGreen";
+      }
+      // Default fallback
+      return lang === "en" ? "PinkGreen Activity" : "Aktivitas PinkGreen";
+    };
+
+    const currentVisualizationType = getVisualizationType(
+      location.pathname,
+      language
+    );
 
     return (
       <PinggerrLayout

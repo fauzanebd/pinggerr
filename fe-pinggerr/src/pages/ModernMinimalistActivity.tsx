@@ -537,6 +537,18 @@ export function ModernMinimalistActivity({
         );
       }
 
+      tempLayer.add(
+        new Konva.Rect({
+          x: 0,
+          y: 0,
+          width: dynamicWidth,
+          height: tempStage.height(),
+          fill: "rgba(128,128,128,0.001)",
+          listening: false,
+        })
+      );
+      tempLayer.moveToBottom();
+
       // Draw and export with transparent background
       tempLayer.draw();
       const dataURL = tempStage.toDataURL({
