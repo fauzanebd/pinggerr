@@ -1,4 +1,4 @@
-# Strava Activity Visualizer
+# Pinggerr - Strava Activity Visualizer
 
 A beautiful web application that connects to your Strava account and generates shareable graphics of your activities using a pink and green theme.
 
