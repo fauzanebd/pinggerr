@@ -21,7 +21,9 @@ export const AuthCallback: React.FC<AuthCallbackProps> = ({
 
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
+    const returnedState = urlParams.get("state");
     const error = urlParams.get("error");
+    const storedState = sessionStorage.getItem("oauth_state");
 
     // Debug logging (can be removed in production)
     // console.log("Processing OAuth callback...");
@@ -31,8 +33,18 @@ export const AuthCallback: React.FC<AuthCallbackProps> = ({
       return;
     }
 
+    // Verify state to prevent CSRF / login mix-up
+    if (!returnedState || !storedState || returnedState !== storedState) {
+      onError("Invalid or missing OAuth state");
+      // Clear any stale state
+      sessionStorage.removeItem("oauth_state");
+      return;
+    }
+
     if (code) {
       hasAttemptedExchange.current = true;
+      // Clear state once validated to prevent reuse
+      sessionStorage.removeItem("oauth_state");
       exchangeCode(code)
         .then(() => {
           // Small delay to ensure state is updated

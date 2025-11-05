@@ -81,6 +81,22 @@ export const useStravaAuth = () => {
     authUrl.searchParams.append("response_type", "code");
     authUrl.searchParams.append("scope", config.strava.scope);
     authUrl.searchParams.append("approval_prompt", "force");
+    // CSRF protection: include state parameter
+    try {
+      const random = crypto.getRandomValues(new Uint8Array(32));
+      const state = Array.from(random)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      sessionStorage.setItem("oauth_state", state);
+      authUrl.searchParams.append("state", state);
+    } catch {
+      // If crypto is unavailable for some reason, fall back to a timestamp-based state
+      const fallbackState = `${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2)}`;
+      sessionStorage.setItem("oauth_state", fallbackState);
+      authUrl.searchParams.append("state", fallbackState);
+    }
 
     console.log("Redirecting to Strava for authentication...");
 
