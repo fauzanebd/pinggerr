@@ -367,9 +367,9 @@ export function ModernMinimalistActivity({
                   strokeWidth: 2,
                   lineJoin: "round",
                   lineCap: "round",
-                  // shadowColor: "rgba(0, 0, 0, 0.15)",
-                  // shadowBlur: 1,
-                  // shadowOffset: { x: 0, y: 1 },
+                  shadowColor: "rgba(0, 0, 0, 0.15)",
+                  shadowBlur: 1,
+                  shadowOffset: { x: 0, y: 1 },
                   listening: false,
                 })
               );
