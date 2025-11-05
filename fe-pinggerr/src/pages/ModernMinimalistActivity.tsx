@@ -52,8 +52,8 @@ export function ModernMinimalistActivity({
   // Minimalist palette (transparent background, white foreground)
   const COLORS = {
     background: "rgba(0,0,0,0)",
-    text: "#FFFFFF",
-    capsuleStroke: "#FFFFFF",
+    text: "#FEFEFE",
+    capsuleStroke: "#FEFEFE",
   };
 
   // Reset selected stats when activity changes
