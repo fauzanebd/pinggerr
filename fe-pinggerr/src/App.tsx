@@ -376,7 +376,7 @@ function MainApp() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-xs sm:text-sm text-blue-800 leading-relaxed">
+                    {/* <p className="text-xs sm:text-sm text-blue-800 leading-relaxed">
                       <strong>
                         🔒{" "}
                         {language === "en"
@@ -386,8 +386,8 @@ function MainApp() {
                       {language === "en"
                         ? "TCX files contain your activity data (GPS, heart rate, etc.) and are processed completely locally in your browser. Your data never leaves your device - no uploads to servers!"
                         : "File TCX berisi data aktivitas Anda (GPS, detak jantung, dll.) dan diproses sepenuhnya secara lokal di browser Anda. Data Anda tidak pernah meninggalkan perangkat - tidak ada unggahan ke server!"}
-                    </p>
-                    <p className="text-xs text-blue-700 mt-1">
+                    </p> */}
+                    <p className="text-sm text-blue-700 mt-1">
                       <strong>
                         {language === "en" ? "What's TCX?" : "Apa itu TCX?"}
                       </strong>{" "}
