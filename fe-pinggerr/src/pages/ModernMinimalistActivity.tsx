@@ -367,9 +367,6 @@ export function ModernMinimalistActivity({
                   strokeWidth: 2,
                   lineJoin: "round",
                   lineCap: "round",
-                  shadowColor: "rgba(0, 0, 0, 0.15)",
-                  shadowBlur: 1,
-                  shadowOffset: { x: 0, y: 1 },
                   listening: false,
                 })
               );
@@ -440,9 +437,6 @@ export function ModernMinimalistActivity({
               cornerRadius: capsuleHeight / 2,
               stroke: COLORS.capsuleStroke,
               strokeWidth: 2,
-              shadowColor: "rgba(0, 0, 0, 0.1)",
-              shadowBlur: 1,
-              shadowOffset: { x: 0, y: 1 },
               listening: false,
             })
           );
@@ -459,9 +453,6 @@ export function ModernMinimalistActivity({
               fontStyle: "normal",
               align: "center",
               fill: COLORS.text,
-              shadowColor: "rgba(0, 0, 0, 0.08)",
-              shadowBlur: 1,
-              shadowOffset: { x: 0, y: 0.5 },
               listening: false,
             })
           );
@@ -477,9 +468,6 @@ export function ModernMinimalistActivity({
               fontSize: numberFontSize,
               fontFamily: "PP Telegraf",
               fill: COLORS.text,
-              shadowColor: "rgba(0, 0, 0, 0.1)",
-              shadowBlur: 2,
-              shadowOffset: { x: 0, y: 1 },
               listening: false,
             })
           );
@@ -523,9 +511,6 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
-            shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1,
-            shadowOffset: { x: 0, y: 1 },
             listening: false,
           })
         );
@@ -541,9 +526,6 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
-            shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1,
-            shadowOffset: { x: 0, y: 1 },
             listening: false,
           })
         );
@@ -559,9 +541,6 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
-            shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1,
-            shadowOffset: { x: 0, y: 1 },
             listening: false,
           })
         );
@@ -577,9 +556,6 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
-            shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1,
-            shadowOffset: { x: 0, y: 1 },
             listening: false,
           })
         );
