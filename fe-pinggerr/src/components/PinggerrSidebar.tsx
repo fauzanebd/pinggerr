@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Glasses, LayoutGrid, Palette } from "lucide-react";
+import { Glasses, LayoutGrid, Palette, Sun } from "lucide-react";
 import PinggerrLogo from "@/assets/pinggerr_logo.svg";
 
 import {
@@ -56,9 +56,9 @@ const visualizationTypes = [
   },
   {
     id: "strava-default-style",
-    title: { en: "Strava Default Style", id: "Gaya Default Strava" },
+    title: { en: "White Orange Activity", id: "Aktivitas Orange Putih" },
     path: "/visualization/strava-default-style",
-    icon: Palette,
+    icon: Sun,
     description: {
       en: "White stats with Strava orange route",
       id: "Stat putih dengan rute oranye Strava",

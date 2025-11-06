@@ -157,7 +157,7 @@ function MainApp() {
           : "Aktivitas Minimalist Modern";
       }
       if (pathname.includes("strava-default-style")) {
-        return lang === "en" ? "Strava Default Style" : "Gaya Default Strava";
+        return lang === "en" ? "White Orange Activity" : "Aktivitas Orange Putih";
       }
       if (pathname.includes("pinkgreen-activity")) {
         return lang === "en" ? "PinkGreen Activity" : "Aktivitas PinkGreen";

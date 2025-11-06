@@ -41,7 +41,7 @@ export function StravaDefaultStyle({
     return defaults.filter((s) => available.includes(s)).slice(0, 3);
   });
 
-  // Fixed palette for Strava default style
+  // Fixed palette for White Orange Activity
   const DATA_COLOR = "#FFFFFF"; // stats in white
   const PATH_COLOR = "#FC5200"; // route in Strava orange
 
@@ -417,7 +417,9 @@ export function StravaDefaultStyle({
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-orange-600">🔥</span>
-            {language === "en" ? "Strava Default Style" : "Gaya Default Strava"}
+            {language === "en"
+              ? "White Orange Activity"
+              : "Aktivitas Orange Putih"}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -491,7 +493,7 @@ export function StravaDefaultStyle({
             ) : generatedImageUrl ? (
               <img
                 src={generatedImageUrl}
-                alt="Strava Default Style Visualization"
+                alt="White Orange Activity Visualization"
                 className="w-full h-auto max-w-full"
                 style={{ maxHeight: "80vh", objectFit: "contain" }}
               />
