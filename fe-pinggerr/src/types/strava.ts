@@ -101,6 +101,8 @@ export interface StravaActivity {
   average_watts?: number;
   weighted_average_watts?: number;
   kilojoules?: number;
+  calories?: number;
+  average_temp?: number;
   device_watts?: boolean;
   has_heartrate?: boolean;
   average_heartrate?: number;

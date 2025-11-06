@@ -39,6 +39,7 @@ export function ModernMinimalistActivity({
       "speed",
       "elevation",
       "date",
+      ...(activity.calories ? ["calories"] : []),
       ...(activity.has_heartrate && activity.average_heartrate
         ? ["heartrate"]
         : []),
@@ -66,6 +67,7 @@ export function ModernMinimalistActivity({
       "speed",
       "elevation",
       "date",
+      ...(activity.calories ? ["calories"] : []),
       ...(activity.has_heartrate && activity.average_heartrate
         ? ["heartrate"]
         : []),
@@ -114,6 +116,7 @@ export function ModernMinimalistActivity({
   const formatSpeed = (distanceMeters: number, timeSeconds: number) =>
     (distanceMeters / 1000 / (timeSeconds / 3600)).toFixed(2);
   const formatElevationNumber = (meters: number) => `${Math.round(meters)}`;
+  const formatCaloriesNumber = (kcal: number) => `${Math.round(kcal)}`;
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
@@ -154,6 +157,46 @@ export function ModernMinimalistActivity({
       value: formatElevationNumber(activity.total_elevation_gain),
     },
     date: { label: "Date", value: formatDate(activity.start_date) },
+    ...(activity.calories
+      ? {
+          calories: {
+            label: "Calories",
+            value: `${Math.round(activity.calories)}`,
+          },
+        }
+      : {}),
+    ...(activity.average_cadence
+      ? {
+          cadence: {
+            label: "Cadence",
+            value: `${Math.round(activity.average_cadence * 2)}`,
+          },
+        }
+      : {}),
+    ...(activity.average_watts
+      ? {
+          power: {
+            label: "Power",
+            value: `${Math.round(activity.average_watts)}`,
+          },
+        }
+      : {}),
+    ...(activity.average_temp
+      ? {
+          temperature: {
+            label: "Temp",
+            value: `${Math.round(activity.average_temp)}`,
+          },
+        }
+      : {}),
+    ...(activity.calories
+      ? {
+          calories: {
+            label: "Calories",
+            value: formatCaloriesNumber(activity.calories),
+          },
+        }
+      : {}),
     ...(activity.has_heartrate && activity.average_heartrate
       ? {
           heartrate: {

@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { PinggerrSidebar } from "./PinggerrSidebar";
 import { Footer } from "./Footer";
 import type { StravaActivity } from "@/types/strava";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PinggerrLayoutProps {
   children: React.ReactNode;
@@ -29,6 +30,7 @@ interface PinggerrLayoutProps {
   onLanguageChange: (lang: "en" | "id") => void;
   currentVisualizationType?: string;
   onLogoClick: () => void;
+  isLoadingActivity?: boolean;
 }
 
 export function PinggerrLayout({
@@ -40,6 +42,7 @@ export function PinggerrLayout({
   onLanguageChange,
   currentVisualizationType = "PinkGreen Activity",
   onLogoClick,
+  isLoadingActivity = false,
 }: PinggerrLayoutProps) {
   const formatDistance = (meters: number) => `${(meters / 1000).toFixed(1)} km`;
   const formatElevation = (meters: number) => `${meters.toFixed(2)} m`;
@@ -94,7 +97,11 @@ export function PinggerrLayout({
               <CardTitle className="flex items-center justify-between text-base">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-brand-pink">🏃‍♂️</span>
-                  <span className="truncate">{activity.name}</span>
+                  {isLoadingActivity ? (
+                    <Skeleton className="h-5 w-48" />
+                  ) : (
+                    <span className="truncate">{activity.name}</span>
+                  )}
                   {/* <Badge className="bg-brand-green text-white text-xs">
                     {isAuthenticated ? "Strava" : "TCX"}
                   </Badge> */}
@@ -109,6 +116,7 @@ export function PinggerrLayout({
                         )
                       }
                       className="text-xs hover:text-white font-medium bg-orange-500 hover:bg-orange-600 text-white"
+                      disabled={isLoadingActivity}
                     >
                       {language === "en" ? "View on Strava" : "Lihat di Strava"}
                     </Button>
@@ -117,12 +125,23 @@ export function PinggerrLayout({
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <span>📏 {formatDistance(activity.distance)}</span>
-                <span>⏱️ {Math.floor(activity.moving_time / 60)} min</span>
-                <span>📈 {formatElevation(activity.total_elevation_gain)}</span>
-                {activity.type && <span>🏃 {activity.type}</span>}
-              </div>
+              {isLoadingActivity ? (
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <span>📏 {formatDistance(activity.distance)}</span>
+                  <span>⏱️ {Math.floor(activity.moving_time / 60)} min</span>
+                  <span>
+                    📈 {formatElevation(activity.total_elevation_gain)}
+                  </span>
+                  {activity.type && <span>🏃 {activity.type}</span>}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

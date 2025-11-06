@@ -1,47 +1,32 @@
 import { useRef, useEffect, useState } from "react";
-// Konva is imported dynamically in generateImage function
 import { decode } from "@googlemaps/polyline-codec";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { StravaActivity } from "@/types/strava";
 import { config } from "@/config/env";
 
-// Strava logos
-import stravaLogoWhite from "@/assets/api_logo_pwrdBy_strava_stack_white.svg";
-// import stravaLogoOrange from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
-
-// Helper function to detect if activity data is from Strava (vs TCX)
-// const isStravaData = (activity: StravaActivity): boolean => {
-//   return activity.source === "strava";
-// };
-
-interface PinkGreenActivityProps {
+interface StravaDefaultStyleProps {
   activity: StravaActivity;
   language: "en" | "id";
   onDownload?: (imageUrl: string) => void;
 }
 
-export function PinkGreenActivity({
+export function StravaDefaultStyle({
   activity,
   language,
   onDownload,
-}: PinkGreenActivityProps) {
+}: StravaDefaultStyleProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const logoImageRef = useRef<HTMLImageElement | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
     null
   );
-  const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
   const [fontLoaded, setFontLoaded] = useState(false);
 
-  // User customizable options - initialize with available stats only
+  // User selectable stats (same behavior as PinkGreen)
   const [selectedStats, setSelectedStats] = useState<string[]>(() => {
-    // Default stats we want to show
-    const defaultStats = ["distance", "pace", "time"];
-
-    // Filter to only include stats that are available for this activity
-    const availableStatKeys = [
+    const defaults = ["distance", "pace", "time"];
+    const available = [
       "distance",
       "pace",
       "time",
@@ -49,33 +34,23 @@ export function PinkGreenActivity({
       "elevation",
       "date",
       ...(activity.calories ? ["calories"] : []),
-      ...(activity.average_cadence ? ["cadence"] : []),
-      ...(activity.average_watts ? ["power"] : []),
-      ...(activity.average_temp ? ["temperature"] : []),
       ...(activity.has_heartrate && activity.average_heartrate
         ? ["heartrate"]
         : []),
     ];
-
-    // Return only the default stats that are actually available, up to 3
-    return defaultStats
-      .filter((stat) => availableStatKeys.includes(stat))
-      .slice(0, 3);
+    return defaults.filter((s) => available.includes(s)).slice(0, 3);
   });
 
-  const [invertColors, setInvertColors] = useState(false);
+  // Fixed palette for Strava default style
+  const DATA_COLOR = "#FFFFFF"; // stats in white
+  const PATH_COLOR = "#FC5200"; // route in Strava orange
 
-  // Colors
-  const BRAND_PINK = "#F99FD2";
-  const BRAND_GREEN = "#165027";
-
-  // Fixed dimensions for consistent output
-  const CANVAS_DIMENSIONS = { width: 800, height: 800 };
+  // Fixed output size similar to PinkGreen
+  const CANVAS_DIMENSIONS = { width: 800, height: 800 } as const;
 
   // Reset selected stats when activity changes
   useEffect(() => {
-    // Reset selected stats when activity changes to ensure we don't have invalid selections
-    const availableStatKeys = [
+    const available = [
       "distance",
       "pace",
       "time",
@@ -83,53 +58,26 @@ export function PinkGreenActivity({
       "elevation",
       "date",
       ...(activity.calories ? ["calories"] : []),
-      ...(activity.average_cadence ? ["cadence"] : []),
-      ...(activity.average_watts ? ["power"] : []),
-      ...(activity.average_temp ? ["temperature"] : []),
       ...(activity.has_heartrate && activity.average_heartrate
         ? ["heartrate"]
         : []),
     ];
-
-    // Filter current selection to only include available stats
-    const validSelectedStats = selectedStats.filter((stat) =>
-      availableStatKeys.includes(stat)
-    );
-
-    // If we have fewer than 3 valid stats selected, try to fill up to 3 with remaining available stats
-    if (validSelectedStats.length < 3) {
-      const remainingStats = availableStatKeys.filter(
-        (stat) => !validSelectedStats.includes(stat)
-      );
-      const additionalStats = remainingStats.slice(
-        0,
-        3 - validSelectedStats.length
-      );
-      const newSelectedStats = [...validSelectedStats, ...additionalStats];
-
-      if (JSON.stringify(newSelectedStats) !== JSON.stringify(selectedStats)) {
-        setSelectedStats(newSelectedStats);
+    const valid = selectedStats.filter((s) => available.includes(s));
+    if (valid.length < 3) {
+      const remaining = available.filter((s) => !valid.includes(s));
+      const filled = [...valid, ...remaining.slice(0, 3 - valid.length)];
+      if (JSON.stringify(filled) !== JSON.stringify(selectedStats)) {
+        setSelectedStats(filled);
       }
-    } else if (
-      JSON.stringify(validSelectedStats) !== JSON.stringify(selectedStats)
-    ) {
-      setSelectedStats(validSelectedStats);
+    } else if (JSON.stringify(valid) !== JSON.stringify(selectedStats)) {
+      setSelectedStats(valid);
     }
-  }, [activity]); // Only depend on activity, not selectedStats to avoid infinite loop
+  }, [activity]);
 
-  // Load Strava logo and font
+  // Load Special Gothic font used by PinkGreen
   useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      setLogoImage(img);
-    };
-    img.src = stravaLogoWhite;
-    logoImageRef.current = img;
-
-    // Load the Special Gothic font
     const loadFont = async () => {
       try {
-        // Check if FontFace API is available
         if ("fonts" in document) {
           const specialGothicFont = new FontFace(
             "Special Gothic Expanded One",
@@ -139,28 +87,33 @@ export function PinkGreenActivity({
           document.fonts.add(specialGothicFont);
           setFontLoaded(true);
         } else {
-          // Fallback: wait a bit for font to load naturally
-          setTimeout(() => setFontLoaded(true), 2000);
+          setTimeout(() => setFontLoaded(true), 1500);
         }
-      } catch (error) {
-        console.warn("❌ Font loading failed, using fallback:", error);
-        setFontLoaded(true); // Continue with fallback font
+      } catch (_) {
+        setFontLoaded(true);
       }
     };
-
     loadFont();
   }, []);
 
-  // Generate image when parameters change
-  useEffect(() => {
-    if (logoImage && fontLoaded) {
-      generateImage();
+  // Measurement helper
+  const getTextWidth = (
+    text: string,
+    fontSize: number,
+    fontWeight: string = "normal",
+    fontFamily: string = "'Funnel Display', sans-serif"
+  ) => {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+      return context.measureText(text).width;
     }
-  }, [logoImage, fontLoaded, selectedStats, invertColors, activity]);
+    return 0;
+  };
 
-  // Helper functions for formatting
+  // Formatters (same as PinkGreen)
   const formatDistance = (meters: number) => `${(meters / 1000).toFixed(1)} km`;
-
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -168,64 +121,38 @@ export function PinkGreenActivity({
     if (hours > 0) return `${hours}h ${minutes.toString().padStart(2, "0")}m`;
     return `${minutes}m ${secondsTime.toString().padStart(2, "0")}s`;
   };
-
-  const formatPace = (activity: StravaActivity) => {
-    // Use average_speed from Strava if available, otherwise fall back to calculation
-    if (activity.average_speed && activity.average_speed > 0) {
-      // average_speed is in m/s, convert to min/km
-      // Formula: 1000 / (average_speed * 60) = minutes per km
-      const paceMinPerKm = 1000 / (activity.average_speed * 60);
-      const paceMin = Math.floor(paceMinPerKm);
-      const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
-      return `${paceMin}:${paceSec.toString().padStart(2, "0")}/km`;
-    } else {
-      // Fallback to total distance / total time calculation
-      const minutes = activity.moving_time / 60;
-      const km = activity.distance / 1000;
-      const paceMinPerKm = minutes / km;
+  const formatPace = (a: StravaActivity) => {
+    if (a.average_speed && a.average_speed > 0) {
+      const paceMinPerKm = 1000 / (a.average_speed * 60);
       const paceMin = Math.floor(paceMinPerKm);
       const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
       return `${paceMin}:${paceSec.toString().padStart(2, "0")}/km`;
     }
+    const minutes = a.moving_time / 60;
+    const km = a.distance / 1000;
+    const paceMinPerKm = minutes / km;
+    const paceMin = Math.floor(paceMinPerKm);
+    const paceSec = Math.round((paceMinPerKm - paceMin) * 60);
+    return `${paceMin}:${paceSec.toString().padStart(2, "0")}/km`;
   };
-
   const formatSpeed = (distanceMeters: number, timeSeconds: number) => {
     const kmh = distanceMeters / 1000 / (timeSeconds / 3600);
     return `${kmh.toFixed(1)} km/h`;
   };
-
   const formatElevation = (meters: number) => `${meters.toFixed(2)} m`;
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
     });
-  };
-
   const formatHeartRate = (bpm: number) => `${Math.round(bpm)} BPM`;
   const formatCalories = (kcal: number) => `${Math.round(kcal)} kcal`;
   const formatCadence = (cad: number) => `${Math.round(cad * 2)} spm`;
   const formatPower = (w: number) => `${Math.round(w)} W`;
   const formatTemperature = (t: number) => `${Math.round(t)}°C`;
 
-  // Track download in the backend
-  const trackDownload = async () => {
-    try {
-      await fetch(`${config.workerUrl}/count-pgs-download`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    } catch (error) {
-      // Do nothing if counting download fails
-    }
-  };
-
-  // Available stats for selection
+  // Stats map
   const availableStats = {
     distance: {
       label: "DISTANCE",
@@ -234,7 +161,7 @@ export function PinkGreenActivity({
     },
     pace: {
       label: "AVG PACE",
-      value: formatPace(activity), // Pass the whole activity object
+      value: formatPace(activity),
       shortLabel: "AVG PACE",
     },
     time: {
@@ -302,58 +229,46 @@ export function PinkGreenActivity({
           },
         }
       : {}),
-  };
+  } as const;
 
-  // Process polyline data for map visualization with proper constraints
+  // Polyline processor (same as PinkGreen)
   const processPolyline = () => {
-    const canvasDimensions = CANVAS_DIMENSIONS;
     const polyline = activity.map?.polyline || activity.map?.summary_polyline;
-    if (!polyline) return [];
-
+    if (!polyline) return [] as Array<{ x: number; y: number }>;
     try {
       const coordinates = decode(polyline);
       if (coordinates.length === 0) return [];
 
-      // Find bounds
-      const lats = coordinates.map((coord) => coord[0]);
-      const lngs = coordinates.map((coord) => coord[1]);
+      const canvas = CANVAS_DIMENSIONS;
+      const lats = coordinates.map((c) => c[0]);
+      const lngs = coordinates.map((c) => c[1]);
       const minLat = Math.min(...lats);
       const maxLat = Math.max(...lats);
       const minLng = Math.min(...lngs);
       const maxLng = Math.max(...lngs);
 
-      // Define layout areas - fixed proportions for consistent output
-      const dataAreaHeight = canvasDimensions.height * 0.4;
-      const mapAreaHeight = canvasDimensions.height * 0.4;
-
-      const mapPadding = canvasDimensions.width * 0.2; // 20% padding
+      const dataAreaHeight = canvas.height * 0.4;
+      const mapAreaHeight = canvas.height * 0.4;
+      const mapPadding = canvas.width * 0.2;
       const mapAreaX = mapPadding;
       const mapAreaY = dataAreaHeight;
-      const mapAreaWidth = canvasDimensions.width - mapPadding * 2;
+      const mapAreaWidth = canvas.width - mapPadding * 2;
 
-      // Calculate the scale to fit the route in the map area while maintaining aspect ratio
       const latRange = maxLat - minLat;
       const lngRange = maxLng - minLng;
-
-      // Add some padding around the route (10% of each dimension)
       const latPadding = latRange * 0.1;
       const lngPadding = lngRange * 0.1;
-
       const paddedLatRange = latRange + latPadding * 2;
       const paddedLngRange = lngRange + lngPadding * 2;
-
-      // Calculate scale factors for both dimensions
       const scaleX = mapAreaWidth / paddedLngRange;
       const scaleY = mapAreaHeight / paddedLatRange;
+      const scale = Math.min(scaleX, scaleY);
 
-      // Use the smaller scale to ensure the entire route fits
-      const routeScale = Math.min(scaleX, scaleY);
-
-      // Calculate the actual map dimensions and centering offset
+      // Apply an additional downscale to make the route smaller on canvas
       const PATH_SCALE = 0.6;
-      const mapWidth = paddedLngRange * routeScale * PATH_SCALE;
-      const mapHeight = paddedLatRange * routeScale * PATH_SCALE;
 
+      const mapWidth = paddedLngRange * scale * PATH_SCALE;
+      const mapHeight = paddedLatRange * scale * PATH_SCALE;
       const offsetX = mapAreaX + (mapAreaWidth - mapWidth) / 2;
       const offsetY = mapAreaY + (mapAreaHeight - mapHeight) / 2;
 
@@ -364,76 +279,56 @@ export function PinkGreenActivity({
           offsetY + ((maxLat + latPadding - lat) / paddedLatRange) * mapHeight;
         return { x, y };
       });
-    } catch (error) {
-      console.error("Error processing polyline:", error);
+    } catch (e) {
+      console.error("Error processing polyline:", e);
       return [];
     }
   };
 
   const pathPoints = processPolyline();
 
-  // Helper function to get text width for centering
-  const getTextWidth = (
-    text: string,
-    fontSize: number,
-    fontWeight: string = "normal",
-    fontFamily: string = "'Funnel Display', sans-serif"
-  ) => {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    if (context) {
-      context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
-      return context.measureText(text).width;
+  // Generate image whenever deps change
+  useEffect(() => {
+    if (fontLoaded) {
+      generateImage();
     }
-    return 0;
+  }, [fontLoaded, selectedStats, activity]);
+
+  // Track download
+  const trackDownload = async () => {
+    try {
+      await fetch(`${config.workerUrl}/count-sds-download`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (_) {
+      // ignore failures
+    }
   };
 
-  // Generate image for both preview and download
-  const generateImage = async (forceColors?: {
-    dataColor: string;
-    mapColor: string;
-  }) => {
-    if (!logoImage) return null;
-
+  const generateImage = async () => {
     setIsGenerating(true);
     try {
-      // Use either forced colors or current state colors
-      const currentDataColor =
-        forceColors?.dataColor || (invertColors ? BRAND_GREEN : BRAND_PINK);
-      const currentMapColor =
-        forceColors?.mapColor || (invertColors ? BRAND_PINK : BRAND_GREEN);
-
-      // Import Konva for creating a temporary stage
       const Konva = (await import("konva")).default;
-
-      // Create a temporary stage for image generation with fixed dimensions
       const tempStage = new Konva.Stage({
         container: document.createElement("div"),
         width: CANVAS_DIMENSIONS.width,
         height: CANVAS_DIMENSIONS.height,
       });
-
       const tempLayer = new Konva.Layer();
       tempStage.add(tempLayer);
 
-      // Add stats panel
-      selectedStats.slice(0, 3).forEach((statKey, index) => {
-        const stat = availableStats[statKey as keyof typeof availableStats];
-
-        // Skip if stat doesn't exist (e.g., heart rate when not available)
+      // Stats panel (3 rows)
+      selectedStats.slice(0, 3).forEach((key, idx) => {
+        const stat = (availableStats as any)[key];
         if (!stat) return;
-
-        // Use proportional spacing based on data area
         const dataAreaHeight = CANVAS_DIMENSIONS.height * 0.35;
         const availableSpace = dataAreaHeight - 40;
         const spacing = availableSpace / 3;
         const startY = 150;
-        const statY = startY + index * spacing;
-
-        // Font sizes based on canvas size
+        const statY = startY + idx * spacing;
         const labelSize = 18;
         const valueSize = 38;
-
         const labelWidth = getTextWidth(stat.label, labelSize, "500");
         const valueFontFamily = fontLoaded
           ? "'Special Gothic Expanded One', 'Arial Black', sans-serif"
@@ -445,7 +340,6 @@ export function PinkGreenActivity({
           valueFontFamily
         );
 
-        // Add label
         tempLayer.add(
           new Konva.Text({
             x: CANVAS_DIMENSIONS.width / 2 - labelWidth / 2,
@@ -454,14 +348,9 @@ export function PinkGreenActivity({
             fontSize: labelSize,
             fontFamily: "'Funnel Display', sans-serif",
             fontStyle: "400",
-            fill: currentDataColor,
+            fill: DATA_COLOR,
           })
         );
-
-        // Add value with font fallback
-        const fontFamily = fontLoaded
-          ? "'Special Gothic Expanded One', 'Arial Black', sans-serif"
-          : "'Arial Black', sans-serif";
 
         tempLayer.add(
           new Konva.Text({
@@ -469,94 +358,57 @@ export function PinkGreenActivity({
             y: statY + labelSize + 4,
             text: stat.value,
             fontSize: valueSize,
-            fontFamily: fontFamily,
+            fontFamily: valueFontFamily,
             fontStyle: "normal",
-            fill: currentDataColor,
+            fill: DATA_COLOR,
           })
         );
       });
 
-      // Add map path if available
+      // Route path in Strava orange
       if (pathPoints.length > 1) {
         const strokeWidth = Math.max(2, CANVAS_DIMENSIONS.width * 0.008);
         tempLayer.add(
           new Konva.Line({
             points: pathPoints.flatMap((p) => [p.x, p.y]),
-            stroke: currentMapColor,
-            strokeWidth: strokeWidth,
+            stroke: PATH_COLOR,
+            strokeWidth,
             lineJoin: "round",
             lineCap: "round",
           })
         );
       }
 
-      // Add Strava logo
-      // const logoAreaHeight = CANVAS_DIMENSIONS.height * 0.3;
-      // const logoWidth = Math.min(CANVAS_DIMENSIONS.width * 0.15, 1000);
-      // const logoHeight = logoWidth * (30 / 88);
-      // const logoY =
-      //   CANVAS_DIMENSIONS.height - logoAreaHeight / 2 - logoHeight / 2;
-
-      // tempLayer.add(
-      //   new Konva.Image({
-      //     image: logoImage,
-      //     x: CANVAS_DIMENSIONS.width / 2 - logoWidth / 2,
-      //     y: logoY,
-      //     width: logoWidth,
-      //     height: logoHeight,
-      //   })
-      // );
-
-      // Draw and export
       tempLayer.draw();
       const dataURL = tempStage.toDataURL({
         mimeType: "image/png",
         quality: 1,
         pixelRatio: 2,
       });
-
-      // Clean up
       tempStage.destroy();
-
       setGeneratedImageUrl(dataURL);
       return dataURL;
-    } catch (error) {
-      console.error("Error generating image:", error);
+    } catch (e) {
+      console.error("Error generating SDS image:", e);
       return null;
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // Download image
   const handleDownload = async () => {
-    // Ensure we use current color settings for download
-    const currentDataColor = invertColors ? BRAND_GREEN : BRAND_PINK;
-    const currentMapColor = invertColors ? BRAND_PINK : BRAND_GREEN;
-    const imageUrl =
-      generatedImageUrl ||
-      (await generateImage({
-        dataColor: currentDataColor,
-        mapColor: currentMapColor,
-      }));
+    const imageUrl = generatedImageUrl || (await generateImage());
     if (!imageUrl) return;
-
-    // Track the download before actually downloading
     await trackDownload();
-
-    // Create download link
     const link = document.createElement("a");
     link.download = `${activity.name
       .replace(/[^a-z0-9]/gi, "_")
-      .toLowerCase()}_strava_viz.png`;
+      .toLowerCase()}_strava_default_style.png`;
     link.href = imageUrl;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    if (onDownload) {
-      onDownload(imageUrl);
-    }
+    onDownload?.(imageUrl);
   };
 
   return (
@@ -564,24 +416,14 @@ export function PinkGreenActivity({
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-brand-pink">🎨</span>
-            {language === "en"
-              ? "Pink Green Activity Visualization"
-              : "Visualisasi Aktivitas Pink Green"}
-            {/* Show Strava logo only if data is from Strava */}
-            {/* {isStravaData(activity) && (
-              <img
-                src={stravaLogoOrange}
-                alt="Powered by Strava"
-                className="h-4 w-auto ml-2"
-              />
-            )} */}
+            <span className="text-orange-600">🔥</span>
+            {language === "en" ? "Strava Default Style" : "Gaya Default Strava"}
           </div>
           <div className="flex items-center gap-2">
             <Button
               onClick={handleDownload}
               disabled={isGenerating}
-              className="bg-brand-pink hover:bg-brand-pink/90 text-brand-green"
+              className="bg-orange-600 hover:bg-orange-700 text-white"
             >
               {isGenerating
                 ? language === "en"
@@ -626,35 +468,19 @@ export function PinkGreenActivity({
                     }
                     className="rounded"
                   />
-                  <span className="text-sm">{stat.shortLabel}</span>
+                  <span className="text-sm">{(stat as any).shortLabel}</span>
                 </label>
               ))}
             </div>
           </div>
-
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={invertColors}
-                onChange={(e) => setInvertColors(e.target.checked)}
-                className="rounded"
-              />
-              <span className="text-sm">
-                {language === "en"
-                  ? "Inverse colors (Green data, Pink map)"
-                  : "Warna terbalik (Data hijau, Peta pink)"}
-              </span>
-            </label>
-          </div>
         </div>
 
         <div ref={containerRef} className="w-full">
-          <div className="border rounded-lg overflow-hidden flex items-center justify-center bg-gray-50">
+          <div className="border rounded-lg overflow-hidden flex items-center justify-center bg-black">
             {isGenerating ? (
               <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-pink mx-auto mb-2"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
                   <p className="text-sm text-muted-foreground">
                     {language === "en"
                       ? "Generating visualization..."
@@ -665,12 +491,9 @@ export function PinkGreenActivity({
             ) : generatedImageUrl ? (
               <img
                 src={generatedImageUrl}
-                alt="Activity Visualization"
+                alt="Strava Default Style Visualization"
                 className="w-full h-auto max-w-full"
-                style={{
-                  maxHeight: "80vh",
-                  objectFit: "contain",
-                }}
+                style={{ maxHeight: "80vh", objectFit: "contain" }}
               />
             ) : (
               <div className="flex items-center justify-center min-h-[400px]">
@@ -681,7 +504,6 @@ export function PinkGreenActivity({
             )}
           </div>
 
-          {/* Info below visualization */}
           <div className="mt-4 text-center text-sm text-muted-foreground">
             {pathPoints.length === 0 && (
               <p className="mt-2 text-orange-600">

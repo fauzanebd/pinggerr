@@ -54,6 +54,16 @@ const visualizationTypes = [
       id: "Visualisasi aktivitas minimalist modern",
     },
   },
+  {
+    id: "strava-default-style",
+    title: { en: "Strava Default Style", id: "Gaya Default Strava" },
+    path: "/visualization/strava-default-style",
+    icon: Palette,
+    description: {
+      en: "White stats with Strava orange route",
+      id: "Stat putih dengan rute oranye Strava",
+    },
+  },
 
   // {
   //   id: "3d-stories",

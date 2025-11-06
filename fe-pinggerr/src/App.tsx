@@ -21,6 +21,7 @@ import { PinggerrLayout } from "@/components/PinggerrLayout";
 import { Footer } from "@/components/Footer";
 import { PinkGreenActivity } from "@/pages/PinkGreenActivity";
 import { ThreeDStories } from "@/pages/ThreeDStories";
+import { StravaDefaultStyle } from "@/pages/StravaDefaultStyle";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
 import { processTcxFromFile } from "@/lib/tcxParser";
 import type { StravaActivity } from "@/types/strava";
@@ -31,7 +32,8 @@ import { LiquidGlassActivity } from "./pages/LiquidGlassActivity";
 import { ModernMinimalistActivity } from "./pages/ModernMinimalistActivity";
 
 function MainApp() {
-  const { isAuthenticated, login, logout, error } = useStravaAuth();
+  const { isAuthenticated, login, logout, error, fetchActivityDetails } =
+    useStravaAuth();
   const [authError, setAuthError] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] =
     useState<StravaActivity | null>(null);
@@ -42,6 +44,7 @@ function MainApp() {
   const [showDisconnectNotice, setShowDisconnectNotice] =
     useState<boolean>(false);
   const [language, setLanguage] = useState<"en" | "id">("en");
+  const [isLoadingActivity, setIsLoadingActivity] = useState<boolean>(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -58,10 +61,28 @@ function MainApp() {
     setAuthError(error);
   };
 
-  const handleSelectActivity = (activity: StravaActivity) => {
-    setSelectedActivity(activity);
-    // Navigate to default visualization (pinkgreen-activity)
-    navigate("/visualization/pinkgreen-activity");
+  const handleSelectActivity = async (activity: StravaActivity) => {
+    if (activity.source === "strava") {
+      // Optimistically show layout with summary data while fetching details
+      setSelectedActivity(activity);
+      setIsLoadingActivity(true);
+      // Navigate immediately to show skeletons/layout
+      navigate("/visualization/pinkgreen-activity");
+      try {
+        const detailed = await fetchActivityDetails(activity.id);
+        setSelectedActivity(detailed);
+      } catch (_) {
+        // Keep summary activity if detail fetch fails
+        setSelectedActivity(activity);
+      } finally {
+        setIsLoadingActivity(false);
+      }
+    } else {
+      // For TCX or other sources, use provided activity as-is
+      setSelectedActivity(activity);
+      // Navigate to default visualization (pinkgreen-activity)
+      navigate("/visualization/pinkgreen-activity");
+    }
   };
 
   const handleBackToList = () => {
@@ -135,6 +156,9 @@ function MainApp() {
           ? "Modern Minimalist Activity"
           : "Aktivitas Minimalist Modern";
       }
+      if (pathname.includes("strava-default-style")) {
+        return lang === "en" ? "Strava Default Style" : "Gaya Default Strava";
+      }
       if (pathname.includes("pinkgreen-activity")) {
         return lang === "en" ? "PinkGreen Activity" : "Aktivitas PinkGreen";
       }
@@ -156,12 +180,25 @@ function MainApp() {
         onLanguageChange={setLanguage}
         currentVisualizationType={currentVisualizationType}
         onLogoClick={handleLogoClick}
+        isLoadingActivity={isLoadingActivity}
       >
         <Routes>
           <Route
             path="/visualization/pinkgreen-activity"
             element={
               <PinkGreenActivity
+                activity={selectedActivity}
+                language={language}
+                onDownload={(imageUrl) => {
+                  console.log("Image downloaded:", imageUrl);
+                }}
+              />
+            }
+          />
+          <Route
+            path="/visualization/strava-default-style"
+            element={
+              <StravaDefaultStyle
                 activity={selectedActivity}
                 language={language}
                 onDownload={(imageUrl) => {

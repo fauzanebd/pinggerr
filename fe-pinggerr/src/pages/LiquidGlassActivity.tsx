@@ -12,6 +12,7 @@ import {
   Mountain,
   Calendar,
   Heart,
+  Thermometer,
 } from "lucide-react";
 
 // import stravaLogoOrange from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
@@ -37,6 +38,7 @@ const createIconImage = async (
     Mountain: `<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>`,
     Calendar: `<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>`,
     Heart: `<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/>`,
+    Thermometer: `<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>`,
   };
 
   const svgContent = iconSvgs[iconName] || iconSvgs.MapPin;
@@ -86,6 +88,10 @@ export function LiquidGlassActivity({
       "speed",
       "elevation",
       "date",
+      ...(activity.calories ? ["calories"] : []),
+      ...(activity.average_cadence ? ["cadence"] : []),
+      ...(activity.average_watts ? ["power"] : []),
+      ...(activity.average_temp ? ["temperature"] : []),
       ...(activity.has_heartrate && activity.average_heartrate
         ? ["heartrate"]
         : []),
@@ -185,6 +191,7 @@ export function LiquidGlassActivity({
         "Mountain",
         "Calendar",
         "Heart",
+        "Thermometer",
       ];
 
       // Use different colors based on glass style
@@ -269,6 +276,10 @@ export function LiquidGlassActivity({
   };
 
   const formatHeartRate = (bpm: number) => `${Math.round(bpm)} BPM`;
+  const formatCalories = (kcal: number) => `${Math.round(kcal)} kcal`;
+  const formatCadence = (cad: number) => `${Math.round(cad * 2)} spm`;
+  const formatPower = (w: number) => `${Math.round(w)} W`;
+  const formatTemperature = (t: number) => `${Math.round(t)}°C`;
 
   // Track download
   const trackDownload = async () => {
@@ -335,6 +346,50 @@ export function LiquidGlassActivity({
       icon: Calendar,
       iconName: "Calendar",
     },
+    ...(activity.calories
+      ? {
+          calories: {
+            label: "CALORIES",
+            value: formatCalories(activity.calories),
+            shortLabel: "CALORIES",
+            icon: Zap,
+            iconName: "Zap",
+          },
+        }
+      : {}),
+    ...(activity.average_cadence
+      ? {
+          cadence: {
+            label: "AVG CADENCE",
+            value: formatCadence(activity.average_cadence),
+            shortLabel: "CADENCE",
+            icon: Gauge,
+            iconName: "Gauge",
+          },
+        }
+      : {}),
+    ...(activity.average_watts
+      ? {
+          power: {
+            label: "AVG POWER",
+            value: formatPower(activity.average_watts),
+            shortLabel: "POWER",
+            icon: Zap,
+            iconName: "Zap",
+          },
+        }
+      : {}),
+    ...(activity.average_temp
+      ? {
+          temperature: {
+            label: "AVG TEMP",
+            value: formatTemperature(activity.average_temp),
+            shortLabel: "TEMP",
+            icon: Thermometer,
+            iconName: "Thermometer",
+          },
+        }
+      : {}),
     ...(activity.has_heartrate && activity.average_heartrate
       ? {
           heartrate: {
