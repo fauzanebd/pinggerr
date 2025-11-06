@@ -44,7 +44,6 @@ function MainApp() {
   const [showDisconnectNotice, setShowDisconnectNotice] =
     useState<boolean>(false);
   const [language, setLanguage] = useState<"en" | "id">("en");
-  const [isLoadingActivity, setIsLoadingActivity] = useState<boolean>(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -65,7 +64,7 @@ function MainApp() {
     if (activity.source === "strava") {
       // Optimistically show layout with summary data while fetching details
       setSelectedActivity(activity);
-      setIsLoadingActivity(true);
+      // setIsLoadingActivity(true);
       // Navigate immediately to show skeletons/layout
       navigate("/visualization/pinkgreen-activity");
       try {
@@ -75,7 +74,7 @@ function MainApp() {
         // Keep summary activity if detail fetch fails
         setSelectedActivity(activity);
       } finally {
-        setIsLoadingActivity(false);
+        // setIsLoadingActivity(false);
       }
     } else {
       // For TCX or other sources, use provided activity as-is
@@ -157,7 +156,9 @@ function MainApp() {
           : "Aktivitas Minimalist Modern";
       }
       if (pathname.includes("strava-default-style")) {
-        return lang === "en" ? "White Orange Activity" : "Aktivitas Orange Putih";
+        return lang === "en"
+          ? "White Orange Activity"
+          : "Aktivitas Orange Putih";
       }
       if (pathname.includes("pinkgreen-activity")) {
         return lang === "en" ? "PinkGreen Activity" : "Aktivitas PinkGreen";
@@ -180,7 +181,7 @@ function MainApp() {
         onLanguageChange={setLanguage}
         currentVisualizationType={currentVisualizationType}
         onLogoClick={handleLogoClick}
-        isLoadingActivity={isLoadingActivity}
+        // isLoadingActivity={isLoadingActivity}
       >
         <Routes>
           <Route
