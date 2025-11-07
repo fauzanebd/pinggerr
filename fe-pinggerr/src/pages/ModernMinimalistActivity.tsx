@@ -50,6 +50,10 @@ export function ModernMinimalistActivity({
   // Scale factor for high-resolution output - tune this for crispness vs file size
   const SCALE = 3; // 1 = base size, 2 = 2x crisp, 3 = 3x crisp (larger file)
 
+  // Additional thickness for all components (title, capsules, route, ornament)
+  // 0 = preserve current layout, 1+ = add extra thickness in pixels (before SCALE multiplier)
+  const ADDITIONAL_THICKNESS = 0.5;
+
   // Base canvas dimensions (2:1 aspect ratio for iOS/Instagram transparency)
   const BASE_DIMENSIONS = { width: 812, height: 400 };
   const CANVAS_DIMENSIONS = {
@@ -359,6 +363,10 @@ export function ModernMinimalistActivity({
           fontStyle: "normal",
           fill: COLORS.text,
           listening: false,
+          ...(ADDITIONAL_THICKNESS > 0 && {
+            stroke: COLORS.text,
+            strokeWidth: ADDITIONAL_THICKNESS * SCALE,
+          }),
         })
       );
 
@@ -447,7 +455,7 @@ export function ModernMinimalistActivity({
                 new Konva.Line({
                   points,
                   stroke: COLORS.text,
-                  strokeWidth: 2 * SCALE,
+                  strokeWidth: (2 + ADDITIONAL_THICKNESS) * SCALE,
                   lineJoin: "round",
                   lineCap: "round",
                   listening: false,
@@ -519,7 +527,7 @@ export function ModernMinimalistActivity({
               height: capsuleHeight,
               cornerRadius: capsuleHeight / 2,
               stroke: COLORS.capsuleStroke,
-              strokeWidth: 2 * SCALE,
+              strokeWidth: (2 + ADDITIONAL_THICKNESS) * SCALE,
               listening: false,
             })
           );
@@ -537,6 +545,10 @@ export function ModernMinimalistActivity({
               align: "center",
               fill: COLORS.text,
               listening: false,
+              ...(ADDITIONAL_THICKNESS > 0 && {
+                stroke: COLORS.text,
+                strokeWidth: ADDITIONAL_THICKNESS * SCALE,
+              }),
             })
           );
 
@@ -552,6 +564,10 @@ export function ModernMinimalistActivity({
               fontFamily: "PP Telegraf",
               fill: COLORS.text,
               listening: false,
+              ...(ADDITIONAL_THICKNESS > 0 && {
+                stroke: COLORS.text,
+                strokeWidth: ADDITIONAL_THICKNESS * SCALE,
+              }),
             })
           );
 
@@ -567,7 +583,7 @@ export function ModernMinimalistActivity({
       if (showOrnament) {
         const ornamentRadius = 48 * SCALE;
         const ornamentStroke = COLORS.text;
-        const ornamentStrokeWidth = 3 * SCALE;
+        const ornamentStrokeWidth = (3 + ADDITIONAL_THICKNESS) * SCALE;
         const rightPad = 20 * SCALE;
         const d = ornamentRadius * Math.SQRT1_2;
 
