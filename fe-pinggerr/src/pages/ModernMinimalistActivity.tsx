@@ -48,7 +48,12 @@ export function ModernMinimalistActivity({
   });
 
   // Canvas size mirrors the provided mock roughly (wide, low height)
-  const CANVAS_DIMENSIONS = { width: 812, height: 232 };
+  const BASE_CANVAS_DIMENSIONS = { width: 812, height: 232 };
+  const SCALE_FACTOR = 5; // 3x resolution for high quality output
+  const CANVAS_DIMENSIONS = {
+    width: BASE_CANVAS_DIMENSIONS.width * SCALE_FACTOR,
+    height: BASE_CANVAS_DIMENSIONS.height * SCALE_FACTOR,
+  };
 
   // Minimalist palette (transparent background, white foreground)
   const COLORS = {
@@ -251,7 +256,7 @@ export function ModernMinimalistActivity({
       const Konva = (await import("konva")).default;
       // Extend canvas width when stats > 4 and ornament is enabled to create a right gutter
       const extraRightSpace =
-        showOrnament && selectedStats.length > 4 ? 160 : 0; // px
+        showOrnament && selectedStats.length > 4 ? 160 * SCALE_FACTOR : 0; // px
       const dynamicWidth = CANVAS_DIMENSIONS.width + extraRightSpace;
       // Create temporary stage with transparent background
       const tempStage = new Konva.Stage({
@@ -262,22 +267,22 @@ export function ModernMinimalistActivity({
 
       const tempLayer = new Konva.Layer();
       tempStage.add(tempLayer);
-      const marginX = 20;
+      const marginX = 20 * SCALE_FACTOR;
       const contentWidth = dynamicWidth - marginX * 2;
 
       // Title sizing and optional top padding when showing tall route
-      const titleFontSize = 34; // matches stat numbers
+      const titleFontSize = 34 * SCALE_FACTOR; // matches stat numbers
       const hasPolyline = Boolean(
         activity.map?.polyline || activity.map?.summary_polyline
       );
-      const rowHeightLocal = 50;
+      const rowHeightLocal = 50 * SCALE_FACTOR;
       const desiredRouteHeight =
         showRoute && hasPolyline ? rowHeightLocal * 3 : 0;
-      const titleBaseline = 16 + titleFontSize / 2;
+      const titleBaseline = 16 * SCALE_FACTOR + titleFontSize / 2;
       const desiredTopY = titleBaseline - desiredRouteHeight;
       const topExtra =
         desiredRouteHeight > 0 && desiredTopY < 0
-          ? Math.ceil(-desiredTopY + 4)
+          ? Math.ceil(-desiredTopY + 4 * SCALE_FACTOR)
           : 0; // 4px padding
       if (topExtra > 0) {
         tempStage.size({
@@ -290,7 +295,7 @@ export function ModernMinimalistActivity({
 
       // Add invisible anchor points at canvas corners for Instagram Stories transparency
       // This helps Instagram preserve transparency instead of defaulting to white background
-      const anchorSize = 1;
+      const anchorSize = 1 * SCALE_FACTOR;
       [
         [0, 0],
         [dynamicWidth - anchorSize, 0],
@@ -315,7 +320,7 @@ export function ModernMinimalistActivity({
       tempLayer.add(
         new Konva.Text({
           x: marginX,
-          y: yOffset + 16,
+          y: yOffset + 16 * SCALE_FACTOR,
           text: title,
           fontSize: titleFontSize,
           fontFamily: "PP Telegraf",
@@ -334,13 +339,13 @@ export function ModernMinimalistActivity({
         .slice(0, MAX_STATS)
         .filter((k) => (availableStats as any)[k]);
       const numberFontSize = titleFontSize; // same as title
-      const labelFontSize = 18; // smaller ultralight
+      const labelFontSize = 18 * SCALE_FACTOR; // smaller ultralight
       const valueFontCss = `${400} ${numberFontSize}px 'PP Telegraf', sans-serif`;
       const labelFontCss = `${200} ${labelFontSize}px 'PP Telegraf', sans-serif`;
-      const capsuleHPad = 8; // horizontal padding inside capsule
-      const capsuleVPad = 8;
-      const gapBetweenCapsuleAndValue = 14;
-      const gapBetweenItems = 14;
+      const capsuleHPad = 8 * SCALE_FACTOR; // horizontal padding inside capsule
+      const capsuleVPad = 8 * SCALE_FACTOR;
+      const gapBetweenCapsuleAndValue = 14 * SCALE_FACTOR;
+      const gapBetweenItems = 14 * SCALE_FACTOR;
 
       // Effective width for title+stats area (keeps stats from taking the entire canvas)
       const effectiveContentWidth =
@@ -362,10 +367,15 @@ export function ModernMinimalistActivity({
                   : effectiveContentWidth * 0.3;
               const routeBoxHeight = rowHeightLocal * 3; // 3x row height
               const routeBoxX =
-                selected.length <= 4 ? 270 : showOrnament ? 660 : 550;
+                selected.length <= 4
+                  ? 270 * SCALE_FACTOR
+                  : showOrnament
+                  ? 660 * SCALE_FACTOR
+                  : 550 * SCALE_FACTOR;
               // Bottom align to title baseline (with yOffset) so it grows upward
               const routeBoxBottom = yOffset + titleBaseline;
-              const routeBoxY = routeBoxBottom - routeBoxHeight + 10;
+              const routeBoxY =
+                routeBoxBottom - routeBoxHeight + 10 * SCALE_FACTOR;
 
               const lats = coordinates.map((c) => c[0]);
               const lngs = coordinates.map((c) => c[1]);
@@ -388,9 +398,11 @@ export function ModernMinimalistActivity({
 
               const mapWidth = paddedLngRange * scale;
               const mapHeight = paddedLatRange * scale;
-              const offsetX = routeBoxX + (routeBoxWidth - mapWidth) + 20;
+              const offsetX =
+                routeBoxX + (routeBoxWidth - mapWidth) + 20 * SCALE_FACTOR;
               //   const offsetX = routeBoxX;
-              const offsetY = routeBoxY + (routeBoxHeight - mapHeight) + 25;
+              const offsetY =
+                routeBoxY + (routeBoxHeight - mapHeight) + 25 * SCALE_FACTOR;
 
               const points: number[] = [];
               coordinates.forEach(([lat, lng]) => {
@@ -407,7 +419,7 @@ export function ModernMinimalistActivity({
                 new Konva.Line({
                   points,
                   stroke: COLORS.text,
-                  strokeWidth: 2,
+                  strokeWidth: 2 * SCALE_FACTOR,
                   lineJoin: "round",
                   lineCap: "round",
                   shadowColor: "rgba(0, 0, 0, 0.15)",
@@ -454,8 +466,8 @@ export function ModernMinimalistActivity({
       });
 
       // Draw both rows justified
-      const rowStartY = yOffset + 80; // below title
-      const rowHeight = 50; // approximate line height
+      const rowStartY = yOffset + 80 * SCALE_FACTOR; // below title
+      const rowHeight = 50 * SCALE_FACTOR; // approximate line height
       rows.forEach((rowItems, rowIndex) => {
         if (rowItems.length === 0) return;
         const totalIntrinsic =
@@ -482,7 +494,7 @@ export function ModernMinimalistActivity({
               height: capsuleHeight,
               cornerRadius: capsuleHeight / 2,
               stroke: COLORS.capsuleStroke,
-              strokeWidth: 2,
+              strokeWidth: 2 * SCALE_FACTOR,
               shadowColor: "rgba(0, 0, 0, 0.1)",
               shadowBlur: 1,
               shadowOffset: { x: 0, y: 1 },
@@ -537,11 +549,11 @@ export function ModernMinimalistActivity({
 
       // Decorative star-like ornament in bottom-right (optional)
       if (showOrnament) {
-        const ornamentRadius = 48;
+        const ornamentRadius = 48 * SCALE_FACTOR;
         const ornamentStroke = COLORS.text;
-        const ornamentStrokeWidth = 3;
-        const rightPad = 20;
-        const bottomPad = 10;
+        const ornamentStrokeWidth = 3 * SCALE_FACTOR;
+        const rightPad = 20 * SCALE_FACTOR;
+        const bottomPad = 10 * SCALE_FACTOR;
         const d = ornamentRadius * Math.SQRT1_2;
 
         // Place ornament just to the right of the stats block, but never beyond the right edge
@@ -633,7 +645,7 @@ export function ModernMinimalistActivity({
       const dataURL = tempStage.toDataURL({
         mimeType: "image/png",
         quality: 1,
-        pixelRatio: 2,
+        pixelRatio: 1, // Using scale factor instead of pixelRatio for better control
       });
 
       // Clean up
