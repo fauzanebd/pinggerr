@@ -209,6 +209,16 @@ function MainApp() {
       if (pathname.includes("pinkgreen-activity")) {
         return lang === "en" ? "PinkGreen Activity" : "Aktivitas PinkGreen";
       }
+      if (pathname.includes("minimalist-serif-with-route")) {
+        return lang === "en"
+          ? "Minimalist Serif With Route"
+          : "Serif Minimalis Dengan Rute";
+      }
+      if (pathname.includes("minimalist-serif-no-route")) {
+        return lang === "en"
+          ? "Minimalist Serif No Route"
+          : "Serif Minimalis Tanpa Rute";
+      }
       // Default fallback
       return lang === "en" ? "PinkGreen Activity" : "Aktivitas PinkGreen";
     };
