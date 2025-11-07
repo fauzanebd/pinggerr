@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -28,6 +28,7 @@ import { processTcxFromFile } from "@/lib/tcxParser";
 import {
   loadActivityFromLocalStorage,
   isCachedActivityStale,
+  clearOldActivityCache,
 } from "@/lib/queryClient";
 import type { StravaActivity } from "@/types/strava";
 import { useQueryClient } from "@tanstack/react-query";
@@ -58,6 +59,12 @@ function MainApp() {
   const [language, setLanguage] = useState<"en" | "id">("en");
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Clean up old localStorage cache on app startup
+  useEffect(() => {
+    // Clean up activities older than 7 days
+    clearOldActivityCache();
+  }, []);
 
   // Use cached query for activity details
   const { data: cachedActivityDetails, rateLimitInfo } =

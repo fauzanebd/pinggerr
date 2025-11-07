@@ -147,7 +147,7 @@ export function isCachedActivityStale(
 /**
  * Clear old cached activities from localStorage (cleanup utility)
  */
-export function clearOldActivityCache(maxAge = 1000 * 60 * 60 * 24 * 7) {
+export function clearOldActivityCache(maxAge = 1000 * 60 * 60 * 24 * 5) {
   try {
     const keys = Object.keys(localStorage);
     const activityKeys = keys.filter((key) =>
