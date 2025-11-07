@@ -474,11 +474,15 @@ async function handleGetStats(request: Request, env: Env): Promise<Response> {
 		// Get all download counts
 		const pgsDownloadsString = await env.PINGGERR_STATS.get('total_pgs_downloads');
 		const mmDownloadsString = await env.PINGGERR_STATS.get('total_mm_downloads');
+		const msnDownloadsString = await env.PINGGERR_STATS.get('total_msn_downloads');
+		const msrDownloadsString = await env.PINGGERR_STATS.get('total_msr_downloads');
 		const lgDownloadsString = await env.PINGGERR_STATS.get('total_lg_downloads');
 		const threeDsDownloadsString = await env.PINGGERR_STATS.get('total_3ds_downloads');
 
 		const pgsDownloads = pgsDownloadsString ? parseInt(pgsDownloadsString, 10) : 0;
 		const mmDownloads = mmDownloadsString ? parseInt(mmDownloadsString, 10) : 0;
+		const msnDownloads = msnDownloadsString ? parseInt(msnDownloadsString, 10) : 0;
+		const msrDownloads = msrDownloadsString ? parseInt(msrDownloadsString, 10) : 0;
 		const lgDownloads = lgDownloadsString ? parseInt(lgDownloadsString, 10) : 0;
 		const threeDsDownloads = threeDsDownloadsString ? parseInt(threeDsDownloadsString, 10) : 0;
 
@@ -494,6 +498,8 @@ async function handleGetStats(request: Request, env: Env): Promise<Response> {
 			JSON.stringify({
 				total_pgs_downloads: pgsDownloads,
 				total_mm_downloads: mmDownloads,
+				total_msn_downloads: msnDownloads,
+				total_msr_downloads: msrDownloads,
 				total_lg_downloads: lgDownloads,
 				total_3ds_downloads: threeDsDownloads,
 				map_loads_this_month: mapLoads,
