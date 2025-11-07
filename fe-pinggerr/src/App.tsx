@@ -30,6 +30,8 @@ import type { StravaActivity } from "@/types/strava";
 import StravaConnectButton from "@/assets/btn_strava_connect_with_orange_x2.svg";
 import { LiquidGlassActivity } from "./pages/LiquidGlassActivity";
 import { ModernMinimalistActivity } from "./pages/ModernMinimalistActivity";
+import { MinimalistSerifWithRoute } from "./pages/MinimalistSerifWithRoute";
+import { MinimalistSerifWithNoRoute } from "./pages/MinimalistSerifWithNoRoute";
 
 function MainApp() {
   const { isAuthenticated, login, logout, error, fetchActivityDetails } =
@@ -236,6 +238,30 @@ function MainApp() {
             path="/visualization/modern-minimalist-activity"
             element={
               <ModernMinimalistActivity
+                activity={selectedActivity}
+                language={language}
+                onDownload={(imageUrl) => {
+                  console.log("Image downloaded:", imageUrl);
+                }}
+              />
+            }
+          />
+          <Route
+            path="/visualization/minimalist-serif-with-route"
+            element={
+              <MinimalistSerifWithRoute
+                activity={selectedActivity}
+                language={language}
+                onDownload={(imageUrl) => {
+                  console.log("Image downloaded:", imageUrl);
+                }}
+              />
+            }
+          />
+          <Route
+            path="/visualization/minimalist-serif-no-route"
+            element={
+              <MinimalistSerifWithNoRoute
                 activity={selectedActivity}
                 language={language}
                 onDownload={(imageUrl) => {

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Glasses, LayoutGrid, Palette, Sun } from "lucide-react";
+import { Glasses, LayoutGrid, Palette, Sun, Contrast } from "lucide-react";
 import PinggerrLogo from "@/assets/pinggerr_logo.svg";
 
 import {
@@ -62,6 +62,32 @@ const visualizationTypes = [
     description: {
       en: "White stats with Strava orange route",
       id: "Stat putih dengan rute oranye Strava",
+    },
+  },
+  {
+    id: "minimalist-serif-with-route",
+    title: {
+      en: "Minimalist Serif With Route",
+      id: "Serif Minimalis Dengan Rute",
+    },
+    path: "/visualization/minimalist-serif-with-route",
+    icon: Contrast,
+    description: {
+      en: "Minimalist black background with activity title, white route and stats",
+      id: "Latar belakang hitam minimalis dengan judul aktivitas, rute dan statistik putih",
+    },
+  },
+  {
+    id: "minimalist-serif-no-route",
+    title: {
+      en: "Minimalist Serif No Route",
+      id: "Serif Minimalis Tanpa Rute",
+    },
+    path: "/visualization/minimalist-serif-no-route",
+    icon: Contrast,
+    description: {
+      en: "Minimalist black background with title and stats grid (no route)",
+      id: "Latar belakang hitam minimalis dengan judul dan grid statistik (tanpa rute)",
     },
   },
 
