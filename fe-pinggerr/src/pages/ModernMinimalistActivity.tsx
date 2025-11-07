@@ -327,8 +327,8 @@ export function ModernMinimalistActivity({
           fontStyle: "normal",
           fill: COLORS.text,
           shadowColor: "rgba(0, 0, 0, 0.1)",
-          shadowBlur: 2,
-          shadowOffset: { x: 0, y: 1 },
+          shadowBlur: 2 * SCALE_FACTOR,
+          shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
           listening: false,
         })
       );
@@ -423,8 +423,8 @@ export function ModernMinimalistActivity({
                   lineJoin: "round",
                   lineCap: "round",
                   shadowColor: "rgba(0, 0, 0, 0.15)",
-                  shadowBlur: 1,
-                  shadowOffset: { x: 0, y: 1 },
+                  shadowBlur: 1 * SCALE_FACTOR,
+                  shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
                   listening: false,
                 })
               );
@@ -496,8 +496,8 @@ export function ModernMinimalistActivity({
               stroke: COLORS.capsuleStroke,
               strokeWidth: 2 * SCALE_FACTOR,
               shadowColor: "rgba(0, 0, 0, 0.1)",
-              shadowBlur: 1,
-              shadowOffset: { x: 0, y: 1 },
+              shadowBlur: 1 * SCALE_FACTOR,
+              shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
               listening: false,
             })
           );
@@ -515,8 +515,8 @@ export function ModernMinimalistActivity({
               align: "center",
               fill: COLORS.text,
               shadowColor: "rgba(0, 0, 0, 0.08)",
-              shadowBlur: 1,
-              shadowOffset: { x: 0, y: 0.5 },
+              shadowBlur: 1 * SCALE_FACTOR,
+              shadowOffset: { x: 0, y: 0.5 * SCALE_FACTOR },
               listening: false,
             })
           );
@@ -533,8 +533,8 @@ export function ModernMinimalistActivity({
               fontFamily: "PP Telegraf",
               fill: COLORS.text,
               shadowColor: "rgba(0, 0, 0, 0.1)",
-              shadowBlur: 2,
-              shadowOffset: { x: 0, y: 1 },
+              shadowBlur: 2 * SCALE_FACTOR,
+              shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
               listening: false,
             })
           );
@@ -579,8 +579,8 @@ export function ModernMinimalistActivity({
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
             shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1,
-            shadowOffset: { x: 0, y: 1 },
+            shadowBlur: 1 * SCALE_FACTOR,
+            shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
             listening: false,
           })
         );
@@ -597,8 +597,8 @@ export function ModernMinimalistActivity({
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
             shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1,
-            shadowOffset: { x: 0, y: 1 },
+            shadowBlur: 1 * SCALE_FACTOR,
+            shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
             listening: false,
           })
         );
@@ -615,8 +615,8 @@ export function ModernMinimalistActivity({
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
             shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1,
-            shadowOffset: { x: 0, y: 1 },
+            shadowBlur: 1 * SCALE_FACTOR,
+            shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
             listening: false,
           })
         );
@@ -633,8 +633,8 @@ export function ModernMinimalistActivity({
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
             shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1,
-            shadowOffset: { x: 0, y: 1 },
+            shadowBlur: 1 * SCALE_FACTOR,
+            shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
             listening: false,
           })
         );
