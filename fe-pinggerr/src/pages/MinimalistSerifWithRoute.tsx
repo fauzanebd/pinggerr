@@ -54,7 +54,7 @@ export function MinimalistSerifWithRoute({
 
   // Layout: Title at top, Stats at bottom 30%, Route in between
   const TITLE_FONT_SIZE = 64; // Same as stats value
-  const TITLE_AREA_HEIGHT = 120; // Space for title with padding
+  const TITLE_AREA_HEIGHT = 140; // Space for title with padding
   const STATS_AREA_HEIGHT = CANVAS_DIMENSIONS.height * 0.3;
   // Dynamic title area height based on showTitle state
   const getTitleAreaHeight = () => (showTitle ? TITLE_AREA_HEIGHT : 50);
@@ -611,8 +611,6 @@ export function MinimalistSerifWithRoute({
               </div>
             ) : generatedImageUrl ? (
               <div className="flex flex-col">
-                {/* super monkey patch haha */}
-                <div className="min-h-[20px] md:min-h-[40px] bg-black"></div>
                 <img
                   src={generatedImageUrl}
                   alt="Minimalist Serif With Route Activity Visualization"
