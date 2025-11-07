@@ -44,6 +44,16 @@ export class StravaApi {
       if (response.status === 401) {
         throw new Error("UNAUTHORIZED"); // Special error for token refresh
       }
+      if (response.status === 429) {
+        // Rate limit exceeded - extract limit info from headers if available
+        const rateLimitLimit = response.headers.get("X-RateLimit-Limit");
+        const rateLimitUsage = response.headers.get("X-RateLimit-Usage");
+        throw new Error(
+          `RATE_LIMIT_EXCEEDED|${rateLimitLimit || "unknown"}|${
+            rateLimitUsage || "unknown"
+          }`
+        );
+      }
       throw new Error(`Strava API error: ${response.statusText}`);
     }
 
@@ -324,4 +334,25 @@ export function createStravaApi(tokens: StravaTokens | null): StravaApi | null {
  */
 export function isTokenRefreshNeeded(error: Error): boolean {
   return error.message === "UNAUTHORIZED";
+}
+
+/**
+ * Check if error indicates rate limit exceeded
+ */
+export function isRateLimitError(error: Error): boolean {
+  return error.message.startsWith("RATE_LIMIT_EXCEEDED");
+}
+
+/**
+ * Parse rate limit error message to extract details
+ */
+export function parseRateLimitError(error: Error): {
+  limit: string;
+  usage: string;
+} {
+  const parts = error.message.split("|");
+  return {
+    limit: parts[1] || "unknown",
+    usage: parts[2] || "unknown",
+  };
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -8,8 +8,11 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useStravaAuth } from "@/hooks/useStravaAuth";
-import type { StravaActivity, ActivityListProps } from "@/types/strava";
+import {
+  useStravaActivities,
+  useStravaActivityPrefetch,
+} from "@/hooks/useStravaQueries";
+import type { ActivityListProps } from "@/types/strava";
 
 // Import Strava logo
 // import stravaLogo from "@/assets/api_logo_pwrdBy_strava_horiz_orange.png";
@@ -17,86 +20,39 @@ import type { StravaActivity, ActivityListProps } from "@/types/strava";
 export const ActivityList: React.FC<ActivityListProps> = ({
   onSelectActivity,
 }) => {
-  const { fetchActivities, isAuthenticated, tokens } = useStravaAuth();
-  const [activities, setActivities] = useState<StravaActivity[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // const { isAuthenticated } = useStravaAuth();
   const [currentPage, setCurrentPage] = useState(1);
-  const [hasMorePages, setHasMorePages] = useState(true);
   const perPage = 30; // Strava's default per_page value
 
-  useEffect(() => {
-    // Only load activities if authenticated and tokens are available
-    if (isAuthenticated && tokens) {
-      loadActivities();
-    }
-  }, [isAuthenticated, tokens]);
+  // Use the new caching hook
+  const {
+    data: allActivities,
+    isLoading: loading,
+    error: queryError,
+    rateLimitInfo,
+  } = useStravaActivities(1, perPage * currentPage);
+  const { prefetchActivity } = useStravaActivityPrefetch();
 
-  // Listen for auth success events
-  useEffect(() => {
-    const handleAuthSuccess = () => {
-      // Small delay to ensure tokens are set
-      setTimeout(() => {
-        loadActivities();
-      }, 200);
-    };
+  // Filter to only show running activities
+  const activities =
+    allActivities?.filter(
+      (activity) => activity.type === "Run" || activity.sport_type === "Run"
+    ) || [];
 
-    window.addEventListener("strava-auth-success", handleAuthSuccess);
-    return () =>
-      window.removeEventListener("strava-auth-success", handleAuthSuccess);
-  }, []);
+  const hasMorePages = allActivities?.length === perPage * currentPage;
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Failed to load activities"
+    : null;
 
-  const loadActivities = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await fetchActivities(1, perPage);
-      // Filter to only show running activities
-      const runningActivities = data.filter(
-        (activity) => activity.type === "Run" || activity.sport_type === "Run"
-      );
-
-      setActivities(runningActivities);
-      setCurrentPage(1);
-      // If we got less than perPage activities, we've reached the end
-      setHasMorePages(data.length === perPage);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load activities"
-      );
-    } finally {
-      setLoading(false);
-    }
+  const loadMoreActivities = () => {
+    setCurrentPage((prev) => prev + 1);
   };
 
-  const loadMoreActivities = async () => {
-    if (!hasMorePages || loadingMore) return;
-
-    setLoadingMore(true);
-    setError(null);
-
-    try {
-      const nextPage = currentPage + 1;
-      const data = await fetchActivities(nextPage, perPage);
-
-      // Filter to only show running activities
-      const runningActivities = data.filter(
-        (activity) => activity.type === "Run" || activity.sport_type === "Run"
-      );
-
-      setActivities((prev) => [...prev, ...runningActivities]);
-      setCurrentPage(nextPage);
-      // If we got less than perPage activities, we've reached the end
-      setHasMorePages(data.length === perPage);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load more activities"
-      );
-    } finally {
-      setLoadingMore(false);
-    }
+  // Prefetch activity details on hover for instant loading
+  const handleActivityHover = (activityId: number) => {
+    prefetchActivity(activityId);
   };
 
   const formatDistance = (meters: number) => {
@@ -162,6 +118,34 @@ export const ActivityList: React.FC<ActivityListProps> = ({
     );
   }
 
+  if (rateLimitInfo.isLimited) {
+    return (
+      <Card className="border-amber-200 bg-amber-50">
+        <CardHeader>
+          <CardTitle className="text-amber-800">
+            ⚠️ Strava API Rate Limit Reached
+          </CardTitle>
+          <CardDescription className="text-amber-700">
+            {rateLimitInfo.message}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-amber-800 mb-3">
+            Strava limits API requests to 300 per 15 minutes and 3,000 per day.
+            Please try again in a few minutes, or cached activities will load
+            automatically.
+          </p>
+          <Button
+            variant="outline"
+            className="border-amber-300 text-amber-800 hover:bg-amber-100"
+          >
+            Cached data will be available shortly
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (error) {
     return (
       <Card className="border-red-200">
@@ -172,9 +156,11 @@ export const ActivityList: React.FC<ActivityListProps> = ({
           <CardDescription className="text-red-500">{error}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={loadActivities} variant="outline">
-            Try Again
-          </Button>
+          <p className="text-sm text-muted-foreground mb-3">
+            Don't worry - your previously viewed activities may still be
+            available in the cache.
+          </p>
+          <Button variant="outline">Try Again Later</Button>
         </CardContent>
       </Card>
     );
@@ -264,6 +250,11 @@ export const ActivityList: React.FC<ActivityListProps> = ({
                   size="sm"
                   variant="ghost"
                   className="ml-4 text-brand-pink hover:text-brand-green hover:bg-brand-pink/10"
+                  onMouseEnter={() => handleActivityHover(activity.id)}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent double-triggering from parent div
+                    onSelectActivity(activity);
+                  }}
                 >
                   Visualize →
                 </Button>
@@ -325,6 +316,11 @@ export const ActivityList: React.FC<ActivityListProps> = ({
                     size="sm"
                     variant="ghost"
                     className="text-brand-pink hover:text-brand-green hover:bg-brand-pink/10"
+                    onMouseEnter={() => handleActivityHover(activity.id)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent double-triggering from parent div
+                      onSelectActivity(activity);
+                    }}
                   >
                     Visualize →
                   </Button>
@@ -340,10 +336,10 @@ export const ActivityList: React.FC<ActivityListProps> = ({
             <Button
               onClick={loadMoreActivities}
               variant="outline"
-              disabled={loadingMore}
+              disabled={loading}
               className="w-full"
             >
-              {loadingMore ? "Loading..." : "Load More Activities"}
+              {loading ? "Loading..." : "Load More Activities"}
             </Button>
           </div>
         )}

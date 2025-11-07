@@ -20,11 +20,18 @@ import { ActivityList } from "@/components/ActivityList";
 import { PinggerrLayout } from "@/components/PinggerrLayout";
 import { Footer } from "@/components/Footer";
 import { PinkGreenActivity } from "@/pages/PinkGreenActivity";
-import { ThreeDStories } from "@/pages/ThreeDStories";
+// import { ThreeDStories } from "@/pages/ThreeDStories";
 import { StravaDefaultStyle } from "@/pages/StravaDefaultStyle";
 import { useStravaAuth } from "@/hooks/useStravaAuth";
+import { useStravaActivityDetails } from "@/hooks/useStravaQueries";
 import { processTcxFromFile } from "@/lib/tcxParser";
+import {
+  loadActivityFromLocalStorage,
+  isCachedActivityStale,
+} from "@/lib/queryClient";
 import type { StravaActivity } from "@/types/strava";
+import { useQueryClient } from "@tanstack/react-query";
+import { CACHE_KEYS } from "@/lib/queryClient";
 
 // Import Connect with Strava SVG
 import StravaConnectButton from "@/assets/btn_strava_connect_with_orange_x2.svg";
@@ -34,11 +41,14 @@ import { MinimalistSerifWithRoute } from "./pages/MinimalistSerifWithRoute";
 import { MinimalistSerifWithNoRoute } from "./pages/MinimalistSerifWithNoRoute";
 
 function MainApp() {
-  const { isAuthenticated, login, logout, error, fetchActivityDetails } =
-    useStravaAuth();
+  const { isAuthenticated, login, logout, error } = useStravaAuth();
+  const queryClient = useQueryClient();
   const [authError, setAuthError] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] =
     useState<StravaActivity | null>(null);
+  const [selectedActivityId, setSelectedActivityId] = useState<number | null>(
+    null
+  );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessingTcx, setIsProcessingTcx] = useState<boolean>(false);
   const [tcxError, setTcxError] = useState<string | null>(null);
@@ -48,6 +58,10 @@ function MainApp() {
   const [language, setLanguage] = useState<"en" | "id">("en");
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Use cached query for activity details
+  const { data: cachedActivityDetails, rateLimitInfo } =
+    useStravaActivityDetails(selectedActivityId);
 
   // Handle OAuth callback
   const isCallbackRoute = location.pathname === "/auth/callback";
@@ -64,30 +78,57 @@ function MainApp() {
 
   const handleSelectActivity = async (activity: StravaActivity) => {
     if (activity.source === "strava") {
-      // Optimistically show layout with summary data while fetching details
-      setSelectedActivity(activity);
-      // setIsLoadingActivity(true);
-      // Navigate immediately to show skeletons/layout
-      navigate("/visualization/pinkgreen-activity");
-      try {
-        const detailed = await fetchActivityDetails(activity.id);
-        setSelectedActivity(detailed);
-      } catch (_) {
-        // Keep summary activity if detail fetch fails
+      // Try to load from cache first (localStorage or query cache)
+      const cached = loadActivityFromLocalStorage(activity.id);
+
+      if (cached) {
+        // Check if cached data is stale by comparing with activity list entry
+        const isStale = isCachedActivityStale(cached, activity);
+
+        if (isStale) {
+          console.log(
+            `Cached activity ${activity.id} is stale, invalidating cache and refetching`
+          );
+
+          // Remove from both query cache and localStorage to force fresh fetch
+          queryClient.removeQueries({
+            queryKey: [CACHE_KEYS.activityDetails(activity.id)],
+          });
+          localStorage.removeItem(CACHE_KEYS.activityDetails(activity.id));
+
+          // Show summary while loading fresh details
+          setSelectedActivity(activity);
+          setSelectedActivityId(activity.id);
+          navigate("/visualization/pinkgreen-activity");
+
+          // The query hook will fetch fresh details automatically
+          // Since we removed the query, it will treat it as a new query and fetch immediately
+        } else {
+          console.log(`Using cached activity ${activity.id} (verified fresh)`);
+          setSelectedActivity(cached as StravaActivity);
+          setSelectedActivityId(activity.id);
+          navigate("/visualization/pinkgreen-activity");
+        }
+      } else {
+        // No cache, show summary while loading details
         setSelectedActivity(activity);
-      } finally {
-        // setIsLoadingActivity(false);
+        setSelectedActivityId(activity.id);
+        navigate("/visualization/pinkgreen-activity");
+
+        // The query hook will fetch details automatically
+        // and update cachedActivityDetails
       }
     } else {
       // For TCX or other sources, use provided activity as-is
       setSelectedActivity(activity);
-      // Navigate to default visualization (pinkgreen-activity)
+      setSelectedActivityId(null);
       navigate("/visualization/pinkgreen-activity");
     }
   };
 
   const handleBackToList = () => {
     setSelectedActivity(null);
+    setSelectedActivityId(null);
     setSelectedFile(null);
     setTcxError(null);
     setShowInstructions(false);
@@ -141,6 +182,9 @@ function MainApp() {
 
   // If an activity is selected, show the visualization layout
   if (selectedActivity) {
+    // Use cached details if available, otherwise use the selected activity
+    const activityToShow = cachedActivityDetails || selectedActivity;
+
     // Determine current visualization type based on pathname
     const getVisualizationType = (
       pathname: string,
@@ -175,116 +219,138 @@ function MainApp() {
     );
 
     return (
-      <PinggerrLayout
-        activity={selectedActivity}
-        language={language}
-        isAuthenticated={isAuthenticated}
-        onBackToList={handleBackToList}
-        onLanguageChange={setLanguage}
-        currentVisualizationType={currentVisualizationType}
-        onLogoClick={handleLogoClick}
-        // isLoadingActivity={isLoadingActivity}
-      >
-        <Routes>
-          <Route
-            path="/visualization/pinkgreen-activity"
-            element={
-              <PinkGreenActivity
-                activity={selectedActivity}
-                language={language}
-                onDownload={(imageUrl) => {
-                  console.log("Image downloaded:", imageUrl);
-                }}
-              />
-            }
-          />
-          <Route
-            path="/visualization/strava-default-style"
-            element={
-              <StravaDefaultStyle
-                activity={selectedActivity}
-                language={language}
-                onDownload={(imageUrl) => {
-                  console.log("Image downloaded:", imageUrl);
-                }}
-              />
-            }
-          />
-          <Route
-            path="/visualization/3d-stories"
-            element={
-              <ThreeDStories
-                activity={selectedActivity}
-                language={language}
-                onDownload={(imageUrl) => {
-                  console.log("Image downloaded:", imageUrl);
-                }}
-              />
-            }
-          />
-          <Route
-            path="/visualization/liquid-glass-activity"
-            element={
-              <LiquidGlassActivity
-                activity={selectedActivity}
-                language={language}
-                onDownload={(imageUrl) => {
-                  console.log("Image downloaded:", imageUrl);
-                }}
-              />
-            }
-          />
-          <Route
-            path="/visualization/modern-minimalist-activity"
-            element={
-              <ModernMinimalistActivity
-                activity={selectedActivity}
-                language={language}
-                onDownload={(imageUrl) => {
-                  console.log("Image downloaded:", imageUrl);
-                }}
-              />
-            }
-          />
-          <Route
-            path="/visualization/minimalist-serif-with-route"
-            element={
-              <MinimalistSerifWithRoute
-                activity={selectedActivity}
-                language={language}
-                onDownload={(imageUrl) => {
-                  console.log("Image downloaded:", imageUrl);
-                }}
-              />
-            }
-          />
-          <Route
-            path="/visualization/minimalist-serif-no-route"
-            element={
-              <MinimalistSerifWithNoRoute
-                activity={selectedActivity}
-                language={language}
-                onDownload={(imageUrl) => {
-                  console.log("Image downloaded:", imageUrl);
-                }}
-              />
-            }
-          />
-          {/* Default redirect to pinkgreen activity */}
-          <Route
-            path="*"
-            element={
-              <PinkGreenActivity
-                activity={selectedActivity}
-                language={language}
-                onDownload={(imageUrl) => {
-                  console.log("Image downloaded:", imageUrl);
-                }}
-              />
-            }
-          />
-        </Routes>
-      </PinggerrLayout>
+      <>
+        {/* Rate Limit Warning Banner */}
+        {rateLimitInfo.isLimited && (
+          <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white px-4 py-3 shadow-lg">
+            <div className="container mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">⚠️</span>
+                <p className="text-sm font-medium">
+                  {language === "en"
+                    ? "Strava API rate limit reached. Showing cached data."
+                    : "Batas API Strava tercapai. Menampilkan data cache."}
+                </p>
+              </div>
+              {rateLimitInfo.usage && (
+                <p className="text-xs opacity-90">
+                  Usage: {rateLimitInfo.usage}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        <PinggerrLayout
+          activity={activityToShow}
+          language={language}
+          isAuthenticated={isAuthenticated}
+          onBackToList={handleBackToList}
+          onLanguageChange={setLanguage}
+          currentVisualizationType={currentVisualizationType}
+          onLogoClick={handleLogoClick}
+          // isLoadingActivity={isLoadingActivity}
+        >
+          <Routes>
+            <Route
+              path="/visualization/pinkgreen-activity"
+              element={
+                <PinkGreenActivity
+                  activity={activityToShow}
+                  language={language}
+                  onDownload={(imageUrl) => {
+                    console.log("Image downloaded:", imageUrl);
+                  }}
+                />
+              }
+            />
+            <Route
+              path="/visualization/strava-default-style"
+              element={
+                <StravaDefaultStyle
+                  activity={activityToShow}
+                  language={language}
+                  onDownload={(imageUrl) => {
+                    console.log("Image downloaded:", imageUrl);
+                  }}
+                />
+              }
+            />
+            {/* <Route
+              path="/visualization/3d-stories"
+              element={
+                <ThreeDStories
+                  activity={activityToShow}
+                  language={language}
+                  onDownload={(imageUrl) => {
+                    console.log("Image downloaded:", imageUrl);
+                  }}
+                />
+              }
+            /> */}
+            <Route
+              path="/visualization/liquid-glass-activity"
+              element={
+                <LiquidGlassActivity
+                  activity={activityToShow}
+                  language={language}
+                  onDownload={(imageUrl) => {
+                    console.log("Image downloaded:", imageUrl);
+                  }}
+                />
+              }
+            />
+            <Route
+              path="/visualization/modern-minimalist-activity"
+              element={
+                <ModernMinimalistActivity
+                  activity={activityToShow}
+                  language={language}
+                  onDownload={(imageUrl) => {
+                    console.log("Image downloaded:", imageUrl);
+                  }}
+                />
+              }
+            />
+            <Route
+              path="/visualization/minimalist-serif-with-route"
+              element={
+                <MinimalistSerifWithRoute
+                  activity={activityToShow}
+                  language={language}
+                  onDownload={(imageUrl) => {
+                    console.log("Image downloaded:", imageUrl);
+                  }}
+                />
+              }
+            />
+            <Route
+              path="/visualization/minimalist-serif-no-route"
+              element={
+                <MinimalistSerifWithNoRoute
+                  activity={activityToShow}
+                  language={language}
+                  onDownload={(imageUrl) => {
+                    console.log("Image downloaded:", imageUrl);
+                  }}
+                />
+              }
+            />
+            {/* Default redirect to pinkgreen activity */}
+            <Route
+              path="*"
+              element={
+                <PinkGreenActivity
+                  activity={activityToShow}
+                  language={language}
+                  onDownload={(imageUrl) => {
+                    console.log("Image downloaded:", imageUrl);
+                  }}
+                />
+              }
+            />
+          </Routes>
+        </PinggerrLayout>
+      </>
     );
   }
 
