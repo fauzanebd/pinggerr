@@ -50,6 +50,10 @@ export default {
 				return handleTrackMmDownload(request, env);
 			case '/count-lg-download':
 				return handleTrackLgDownload(request, env);
+			case '/count-msn-download':
+				return handleTrackMsnDownload(request, env);
+			case '/count-msr-download':
+				return handleTrackMsrDownload(request, env);
 
 			case '/count-3ds-download':
 				return handleTrack3dsDownload(request, env);
@@ -284,6 +288,88 @@ async function handleTrackMmDownload(request: Request, env: Env): Promise<Respon
 		);
 	} catch (error) {
 		console.error('MM download tracking error:', error);
+		return new Response(JSON.stringify({ error: 'Internal server error' }), {
+			status: 500,
+			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+		});
+	}
+}
+
+/**
+ * Track a Minimalist Serif With No Route activity download event by incrementing the counter
+ */
+async function handleTrackMsnDownload(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'POST') {
+		return new Response('Method not allowed', {
+			status: 405,
+			headers: corsHeaders,
+		});
+	}
+
+	try {
+		const downloadCountKey = 'total_msn_downloads';
+
+		// Get current count, default to 0 if not exists
+		const currentCountString = await env.PINGGERR_STATS.get(downloadCountKey);
+		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
+
+		// Increment and store the new count
+		const newCount = currentCount + 1;
+		await env.PINGGERR_STATS.put(downloadCountKey, newCount.toString());
+
+		// Return the new count
+		return new Response(
+			JSON.stringify({
+				success: true,
+				total_msn_downloads: newCount,
+			}),
+			{
+				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+			}
+		);
+	} catch (error) {
+		console.error('MSN download tracking error:', error);
+		return new Response(JSON.stringify({ error: 'Internal server error' }), {
+			status: 500,
+			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+		});
+	}
+}
+
+/**
+ * Track a Minimalist Serif With Route activity download event by incrementing the counter
+ */
+async function handleTrackMsrDownload(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'POST') {
+		return new Response('Method not allowed', {
+			status: 405,
+			headers: corsHeaders,
+		});
+	}
+
+	try {
+		const downloadCountKey = 'total_msr_downloads';
+
+		// Get current count, default to 0 if not exists
+		const currentCountString = await env.PINGGERR_STATS.get(downloadCountKey);
+		const currentCount = currentCountString ? parseInt(currentCountString, 10) : 0;
+
+		// Increment and store the new count
+		const newCount = currentCount + 1;
+		await env.PINGGERR_STATS.put(downloadCountKey, newCount.toString());
+
+		// Return the new count
+		return new Response(
+			JSON.stringify({
+				success: true,
+				total_msr_downloads: newCount,
+			}),
+			{
+				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+			}
+		);
+	} catch (error) {
+		console.error('MSR download tracking error:', error);
 		return new Response(JSON.stringify({ error: 'Internal server error' }), {
 			status: 500,
 			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
