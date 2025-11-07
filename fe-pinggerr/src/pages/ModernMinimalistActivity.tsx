@@ -47,19 +47,15 @@ export function ModernMinimalistActivity({
     return defaults.filter((s) => available.includes(s)).slice(0, 4);
   });
 
-  // Canvas size mirrors the provided mock roughly (wide, low height)
-  const BASE_CANVAS_DIMENSIONS = { width: 812, height: 232 };
-  const SCALE_FACTOR = 5; // 3x resolution for high quality output
-  const CANVAS_DIMENSIONS = {
-    width: BASE_CANVAS_DIMENSIONS.width * SCALE_FACTOR,
-    height: BASE_CANVAS_DIMENSIONS.height * SCALE_FACTOR,
-  };
+  // Canvas dimensions (normal size, will be scaled at export via pixelRatio)
+  // Height increased to improve aspect ratio for iOS/Instagram transparency (was 232)
+  const CANVAS_DIMENSIONS = { width: 812, height: 400 };
 
   // Minimalist palette (transparent background, white foreground)
   const COLORS = {
     background: "rgba(0,0,0,0)",
-    text: "#FEFEFE",
-    capsuleStroke: "#FEFEFE",
+    text: "#FFFFFF",
+    capsuleStroke: "#FFFFFF",
   };
 
   // Reset selected stats when activity changes
@@ -256,7 +252,7 @@ export function ModernMinimalistActivity({
       const Konva = (await import("konva")).default;
       // Extend canvas width when stats > 4 and ornament is enabled to create a right gutter
       const extraRightSpace =
-        showOrnament && selectedStats.length > 4 ? 160 * SCALE_FACTOR : 0; // px
+        showOrnament && selectedStats.length > 4 ? 160 : 0;
       const dynamicWidth = CANVAS_DIMENSIONS.width + extraRightSpace;
       // Create temporary stage with transparent background
       const tempStage = new Konva.Stage({
@@ -267,23 +263,23 @@ export function ModernMinimalistActivity({
 
       const tempLayer = new Konva.Layer();
       tempStage.add(tempLayer);
-      const marginX = 20 * SCALE_FACTOR;
+      const marginX = 20;
       const contentWidth = dynamicWidth - marginX * 2;
 
       // Title sizing and optional top padding when showing tall route
-      const titleFontSize = 34 * SCALE_FACTOR; // matches stat numbers
+      const titleFontSize = 34; // matches stat numbers
       const hasPolyline = Boolean(
         activity.map?.polyline || activity.map?.summary_polyline
       );
-      const rowHeightLocal = 50 * SCALE_FACTOR;
+      const rowHeightLocal = 50;
       const desiredRouteHeight =
         showRoute && hasPolyline ? rowHeightLocal * 3 : 0;
-      const titleBaseline = 16 * SCALE_FACTOR + titleFontSize / 2;
+      const titleBaseline = 16 + titleFontSize / 2;
       const desiredTopY = titleBaseline - desiredRouteHeight;
       const topExtra =
         desiredRouteHeight > 0 && desiredTopY < 0
-          ? Math.ceil(-desiredTopY + 4 * SCALE_FACTOR)
-          : 0; // 4px padding
+          ? Math.ceil(-desiredTopY + 4)
+          : 0;
       if (topExtra > 0) {
         tempStage.size({
           width: dynamicWidth,
@@ -295,7 +291,7 @@ export function ModernMinimalistActivity({
 
       // Add invisible anchor points at canvas corners for Instagram Stories transparency
       // This helps Instagram preserve transparency instead of defaulting to white background
-      const anchorSize = 1 * SCALE_FACTOR;
+      const anchorSize = 1;
       [
         [0, 0],
         [dynamicWidth - anchorSize, 0],
@@ -313,22 +309,49 @@ export function ModernMinimalistActivity({
           })
         );
       });
+
+      // iOS/Instagram transparency fix: Add invisible spacer content when no route
+      // This mimics the pixel distribution of the route to help iOS recognize transparency
+      if (!showRoute || !hasPolyline) {
+        // Add vertical lines of barely visible pixels distributed across the canvas
+        // This matches the content density when route is shown
+        const numLines = 8;
+        const spacing = dynamicWidth / (numLines + 1);
+        for (let i = 1; i <= numLines; i++) {
+          tempLayer.add(
+            new Konva.Line({
+              points: [
+                spacing * i,
+                yOffset + titleFontSize + 20,
+                spacing * i,
+                canvasHeight - 80,
+              ],
+              stroke: "rgba(255, 255, 255, 0.002)",
+              strokeWidth: 1,
+              listening: false,
+            })
+          );
+        }
+      }
       const title =
         activity.name && activity.name.trim().length > 0
           ? activity.name.trim()
           : "Activity";
+
+      // Center content vertically
+      const totalContentHeight = titleFontSize + 80 + 50 * 2;
+      const verticalPadding =
+        (CANVAS_DIMENSIONS.height - totalContentHeight) / 2;
+
       tempLayer.add(
         new Konva.Text({
           x: marginX,
-          y: yOffset + 16 * SCALE_FACTOR,
+          y: yOffset + verticalPadding,
           text: title,
           fontSize: titleFontSize,
           fontFamily: "PP Telegraf",
           fontStyle: "normal",
           fill: COLORS.text,
-          shadowColor: "rgba(0, 0, 0, 0.1)",
-          shadowBlur: 2 * SCALE_FACTOR,
-          shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
           listening: false,
         })
       );
@@ -339,13 +362,13 @@ export function ModernMinimalistActivity({
         .slice(0, MAX_STATS)
         .filter((k) => (availableStats as any)[k]);
       const numberFontSize = titleFontSize; // same as title
-      const labelFontSize = 18 * SCALE_FACTOR; // smaller ultralight
+      const labelFontSize = 18; // smaller ultralight
       const valueFontCss = `${400} ${numberFontSize}px 'PP Telegraf', sans-serif`;
       const labelFontCss = `${200} ${labelFontSize}px 'PP Telegraf', sans-serif`;
-      const capsuleHPad = 8 * SCALE_FACTOR; // horizontal padding inside capsule
-      const capsuleVPad = 8 * SCALE_FACTOR;
-      const gapBetweenCapsuleAndValue = 14 * SCALE_FACTOR;
-      const gapBetweenItems = 14 * SCALE_FACTOR;
+      const capsuleHPad = 8; // horizontal padding inside capsule
+      const capsuleVPad = 8;
+      const gapBetweenCapsuleAndValue = 14;
+      const gapBetweenItems = 14;
 
       // Effective width for title+stats area (keeps stats from taking the entire canvas)
       const effectiveContentWidth =
@@ -367,15 +390,11 @@ export function ModernMinimalistActivity({
                   : effectiveContentWidth * 0.3;
               const routeBoxHeight = rowHeightLocal * 3; // 3x row height
               const routeBoxX =
-                selected.length <= 4
-                  ? 270 * SCALE_FACTOR
-                  : showOrnament
-                  ? 660 * SCALE_FACTOR
-                  : 550 * SCALE_FACTOR;
-              // Bottom align to title baseline (with yOffset) so it grows upward
-              const routeBoxBottom = yOffset + titleBaseline;
-              const routeBoxY =
-                routeBoxBottom - routeBoxHeight + 10 * SCALE_FACTOR;
+                selected.length <= 4 ? 270 : showOrnament ? 660 : 550;
+              // Position closer to stats - align with title row in vertically centered layout
+              const routeBoxBottom =
+                yOffset + verticalPadding + titleFontSize - 20;
+              const routeBoxY = routeBoxBottom - routeBoxHeight + 10;
 
               const lats = coordinates.map((c) => c[0]);
               const lngs = coordinates.map((c) => c[1]);
@@ -398,11 +417,8 @@ export function ModernMinimalistActivity({
 
               const mapWidth = paddedLngRange * scale;
               const mapHeight = paddedLatRange * scale;
-              const offsetX =
-                routeBoxX + (routeBoxWidth - mapWidth) + 20 * SCALE_FACTOR;
-              //   const offsetX = routeBoxX;
-              const offsetY =
-                routeBoxY + (routeBoxHeight - mapHeight) + 25 * SCALE_FACTOR;
+              const offsetX = routeBoxX + (routeBoxWidth - mapWidth) + 20;
+              const offsetY = routeBoxY + (routeBoxHeight - mapHeight) + 25;
 
               const points: number[] = [];
               coordinates.forEach(([lat, lng]) => {
@@ -419,12 +435,9 @@ export function ModernMinimalistActivity({
                 new Konva.Line({
                   points,
                   stroke: COLORS.text,
-                  strokeWidth: 2 * SCALE_FACTOR,
+                  strokeWidth: 2,
                   lineJoin: "round",
                   lineCap: "round",
-                  shadowColor: "rgba(0, 0, 0, 0.15)",
-                  shadowBlur: 1 * SCALE_FACTOR,
-                  shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
                   listening: false,
                 })
               );
@@ -465,9 +478,9 @@ export function ModernMinimalistActivity({
           it.groupWidth + (rows[targetRow].length > 1 ? gapBetweenItems : 0);
       });
 
-      // Draw both rows justified
-      const rowStartY = yOffset + 80 * SCALE_FACTOR; // below title
-      const rowHeight = 50 * SCALE_FACTOR; // approximate line height
+      // Draw both rows justified - use verticalPadding calculated earlier
+      const rowStartY = yOffset + verticalPadding + titleFontSize + 40; // below title, centered
+      const rowHeight = 50; // approximate line height
       rows.forEach((rowItems, rowIndex) => {
         if (rowItems.length === 0) return;
         const totalIntrinsic =
@@ -494,10 +507,7 @@ export function ModernMinimalistActivity({
               height: capsuleHeight,
               cornerRadius: capsuleHeight / 2,
               stroke: COLORS.capsuleStroke,
-              strokeWidth: 2 * SCALE_FACTOR,
-              shadowColor: "rgba(0, 0, 0, 0.1)",
-              shadowBlur: 1 * SCALE_FACTOR,
-              shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
+              strokeWidth: 2,
               listening: false,
             })
           );
@@ -514,9 +524,6 @@ export function ModernMinimalistActivity({
               fontStyle: "normal",
               align: "center",
               fill: COLORS.text,
-              shadowColor: "rgba(0, 0, 0, 0.08)",
-              shadowBlur: 1 * SCALE_FACTOR,
-              shadowOffset: { x: 0, y: 0.5 * SCALE_FACTOR },
               listening: false,
             })
           );
@@ -532,9 +539,6 @@ export function ModernMinimalistActivity({
               fontSize: numberFontSize,
               fontFamily: "PP Telegraf",
               fill: COLORS.text,
-              shadowColor: "rgba(0, 0, 0, 0.1)",
-              shadowBlur: 2 * SCALE_FACTOR,
-              shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
               listening: false,
             })
           );
@@ -549,11 +553,10 @@ export function ModernMinimalistActivity({
 
       // Decorative star-like ornament in bottom-right (optional)
       if (showOrnament) {
-        const ornamentRadius = 48 * SCALE_FACTOR;
+        const ornamentRadius = 48;
         const ornamentStroke = COLORS.text;
-        const ornamentStrokeWidth = 3 * SCALE_FACTOR;
-        const rightPad = 20 * SCALE_FACTOR;
-        const bottomPad = 10 * SCALE_FACTOR;
+        const ornamentStrokeWidth = 3;
+        const rightPad = 20;
         const d = ornamentRadius * Math.SQRT1_2;
 
         // Place ornament just to the right of the stats block, but never beyond the right edge
@@ -564,7 +567,8 @@ export function ModernMinimalistActivity({
           marginX + effectiveContentWidth + ornamentOverlapShift;
         const maxCenterX = dynamicWidth - rightPad - ornamentRadius;
         const ornamentCenterX = Math.min(desiredCenterX, maxCenterX);
-        const ornamentCenterY = canvasHeight - bottomPad - ornamentRadius;
+        // Position closer to stats - align with bottom row of stats
+        const ornamentCenterY = rowStartY + rowHeight + ornamentRadius / 2 + 20;
 
         // Vertical line
         tempLayer.add(
@@ -578,9 +582,6 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
-            shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1 * SCALE_FACTOR,
-            shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
             listening: false,
           })
         );
@@ -596,9 +597,6 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
-            shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1 * SCALE_FACTOR,
-            shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
             listening: false,
           })
         );
@@ -614,9 +612,6 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
-            shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1 * SCALE_FACTOR,
-            shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
             listening: false,
           })
         );
@@ -632,9 +627,6 @@ export function ModernMinimalistActivity({
             stroke: ornamentStroke,
             strokeWidth: ornamentStrokeWidth,
             lineCap: "square",
-            shadowColor: "rgba(0, 0, 0, 0.12)",
-            shadowBlur: 1 * SCALE_FACTOR,
-            shadowOffset: { x: 0, y: 1 * SCALE_FACTOR },
             listening: false,
           })
         );
@@ -645,7 +637,7 @@ export function ModernMinimalistActivity({
       const dataURL = tempStage.toDataURL({
         mimeType: "image/png",
         quality: 1,
-        pixelRatio: 1, // Using scale factor instead of pixelRatio for better control
+        pixelRatio: 4, // 4x for crisp high-res output (was 2)
       });
 
       // Clean up
