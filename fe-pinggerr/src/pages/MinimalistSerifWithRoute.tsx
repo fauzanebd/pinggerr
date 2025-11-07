@@ -54,7 +54,7 @@ export function MinimalistSerifWithRoute({
 
   // Layout: Title at top, Stats at bottom 30%, Route in between
   const TITLE_FONT_SIZE = 64; // Same as stats value
-  const TITLE_AREA_HEIGHT = 200; // Space for title with padding
+  const TITLE_AREA_HEIGHT = 120; // Space for title with padding
   const STATS_AREA_HEIGHT = CANVAS_DIMENSIONS.height * 0.3;
   // Dynamic title area height based on showTitle state
   const getTitleAreaHeight = () => (showTitle ? TITLE_AREA_HEIGHT : 50);
@@ -349,12 +349,10 @@ export function MinimalistSerifWithRoute({
 
             // Route area starts after title, ends before stats
             const routePadding = canvas.width * 0.1; // 10% horizontal padding
-            const routeVerticalPadding = canvas.height * 0.05; // 5% vertical padding
             const routeAreaX = routePadding;
-            const routeAreaY = getTitleAreaHeight() + routeVerticalPadding;
+            const routeAreaY = getTitleAreaHeight();
             const routeAreaWidth = canvas.width - routePadding * 2;
-            const routeAreaHeight =
-              getRouteAreaHeight() - routeVerticalPadding * 2;
+            const routeAreaHeight = getRouteAreaHeight();
 
             const latRange = maxLat - minLat;
             const lngRange = maxLng - minLng;
@@ -612,12 +610,16 @@ export function MinimalistSerifWithRoute({
                 </div>
               </div>
             ) : generatedImageUrl ? (
-              <img
-                src={generatedImageUrl}
-                alt="Minimalist Serif With Route Activity Visualization"
-                className="w-full h-auto max-w-full"
-                style={{ maxHeight: "80vh", objectFit: "contain" }}
-              />
+              <div className="flex flex-col">
+                {/* super monkey patch haha */}
+                <div className="min-h-[20px] md:min-h-[40px] bg-black"></div>
+                <img
+                  src={generatedImageUrl}
+                  alt="Minimalist Serif With Route Activity Visualization"
+                  className="w-full h-auto max-w-full"
+                  style={{ maxHeight: "80vh", objectFit: "contain" }}
+                />
+              </div>
             ) : (
               <div className="flex items-center justify-center min-h-[400px]">
                 <p className="text-sm text-muted-foreground">
