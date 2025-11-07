@@ -50,7 +50,7 @@ export function MinimalistSerifWithRoute({
   const PATH_COLOR = "#FFFFFF";
 
   // Fixed canvas dimensions
-  const CANVAS_DIMENSIONS = { width: 800, height: 800 } as const;
+  const CANVAS_DIMENSIONS = { width: 1000, height: 800 } as const;
 
   // Layout: Title at top, Stats at bottom 30%, Route in between
   const TITLE_FONT_SIZE = 64; // Same as stats value
