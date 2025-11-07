@@ -498,8 +498,8 @@ async function handleGetStats(request: Request, env: Env): Promise<Response> {
 			JSON.stringify({
 				total_pgs_downloads: pgsDownloads,
 				total_mm_downloads: mmDownloads,
-				total_msn_downloads: msnDownloads,
-				total_msr_downloads: msrDownloads,
+				total_minimalist_serif_no_route_downloads: msnDownloads,
+				total_minimalist_serif_with_route_downloads: msrDownloads,
 				total_lg_downloads: lgDownloads,
 				total_3ds_downloads: threeDsDownloads,
 				map_loads_this_month: mapLoads,
