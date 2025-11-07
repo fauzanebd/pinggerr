@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { PinggerrSidebar } from "./PinggerrSidebar";
 import { Footer } from "./Footer";
 import type { StravaActivity } from "@/types/strava";
+import { ArrowLeft } from "lucide-react";
 
 import { Badge } from "./ui/badge";
 
@@ -91,6 +92,19 @@ export function PinggerrLayout({
 
         {/* Activity info bar */}
         <div className="p-4 border-b bg-muted/30">
+          <Card
+            className="mb-3 cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={onBackToList}
+          >
+            <div className="flex items-center p-4">
+              <ArrowLeft className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground text-sm">
+                {language === "en"
+                  ? "Back to activity list"
+                  : "Kembali ke daftar aktivitas"}
+              </span>
+            </div>
+          </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between text-base">
