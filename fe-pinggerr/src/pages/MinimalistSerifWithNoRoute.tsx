@@ -55,7 +55,7 @@ export function MinimalistSerifWithNoRoute({
   const TEXT_COLOR = "#FFFFFF";
 
   // Canvas dimensions - wider format (not square)
-  const CANVAS_DIMENSIONS = { width: 920, height: 500 } as const;
+  const CANVAS_DIMENSIONS = { width: 1020, height: 500 } as const;
 
   // Layout constants
   const TITLE_FONT_SIZE = 64; // Same as stats value

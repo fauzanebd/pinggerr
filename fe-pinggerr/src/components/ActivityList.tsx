@@ -34,10 +34,11 @@ export const ActivityList: React.FC<ActivityListProps> = ({
   const { prefetchActivity } = useStravaActivityPrefetch();
 
   // Filter to only show running activities
-  const activities =
-    allActivities?.filter(
-      (activity) => activity.type === "Run" || activity.sport_type === "Run"
-    ) || [];
+  // const activities =
+  //   allActivities?.filter(
+  //     (activity) => activity.type === "Run" || activity.sport_type === "Run"
+  //   ) || [];
+  const activities = allActivities || [];
 
   const hasMorePages = allActivities?.length === perPage * currentPage;
   const error = queryError
