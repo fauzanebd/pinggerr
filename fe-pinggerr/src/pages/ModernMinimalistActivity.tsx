@@ -666,7 +666,7 @@ export function ModernMinimalistActivity({
       const dataURL = tempStage.toDataURL({
         mimeType: "image/png",
         quality: 1,
-        pixelRatio: 2, // Canvas already scaled by SCALE factor
+        pixelRatio: 1, // Canvas already scaled by SCALE factor
       });
 
       // Clean up
