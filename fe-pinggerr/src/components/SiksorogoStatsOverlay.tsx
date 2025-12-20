@@ -1,10 +1,10 @@
-// components/StatsOverlay.tsx
+// components/SiksorogoStatsOverlay.tsx
 import React from "react";
 import { MapPin, Zap, Clock, Mountain } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { StravaActivity, ActivityTrackpoint } from "@/types/strava";
 
-interface StatsOverlayProps {
+interface SiksorogoStatsOverlayProps {
   activity: StravaActivity;
   currentTrackpoint?: ActivityTrackpoint;
   currentIndex: number;
@@ -31,6 +31,7 @@ const StatTitle: React.FC<StatTitleProps> = ({
   return (
     <span
       className={`text-gray-300 lg:text-lg text-md flex items-center gap-2 ${className}`}
+      style={{ fontFamily: '"The Seasons", sans-serif' }}
     >
       {Icon && <Icon className="w-4 h-4" />}
       {children}
@@ -41,14 +42,15 @@ const StatTitle: React.FC<StatTitleProps> = ({
 const StatValue: React.FC<StatValueProps> = ({ children, className = "" }) => {
   return (
     <span
-      className={`text-white-400 font-bold lg:text-lg text-md ${className}`}
+      className={`text-white-400 font-medium lg:text-lg text-md ${className}`}
+      style={{ fontFamily: "Inter, sans-serif" }}
     >
       {children}
     </span>
   );
 };
 
-export const StatsOverlay: React.FC<StatsOverlayProps> = ({
+export const SiksorogoStatsOverlay: React.FC<SiksorogoStatsOverlayProps> = ({
   activity,
   currentTrackpoint,
   currentIndex,
@@ -205,7 +207,8 @@ export const StatsOverlay: React.FC<StatsOverlayProps> = ({
 
   return (
     <div
-      className={`absolute lg:bottom-16 lg:left-16 bottom-10 left-8 bg-black bg-opacity-75 text-white p-3 rounded-lg text-sm  ${className}`}
+      className={`absolute bg-black bg-opacity-75 text-white p-3 rounded-lg text-sm ${className}`}
+      style={{ bottom: "50px", left: "50px" }}
     >
       {isInFinalView ? (
         <div className="lg:space-y-1 space-y-2 lg:min-w-64 min-w-48">
@@ -218,15 +221,21 @@ export const StatsOverlay: React.FC<StatsOverlayProps> = ({
           </div>
           <div className="flex justify-between items-center gap-4">
             <StatTitle icon={MapPin}>Distance</StatTitle>
-            <StatValue>{finalStats.totalDistance}</StatValue>
+            <StatValue className="font-bold">
+              {finalStats.totalDistance}
+            </StatValue>
           </div>
           <div className="flex justify-between items-center gap-4">
             <StatTitle icon={Mountain}>Elevation</StatTitle>
-            <StatValue>{finalStats.totalElevationGain}</StatValue>
+            <StatValue className="font-bold">
+              {finalStats.totalElevationGain}
+            </StatValue>
           </div>
           <div className="flex justify-between items-center gap-4">
             <StatTitle icon={Clock}>Time</StatTitle>
-            <StatValue>{finalStats.elapsedTime}</StatValue>
+            <StatValue className="font-bold">
+              {finalStats.elapsedTime}
+            </StatValue>
           </div>
         </div>
       ) : (
@@ -236,19 +245,21 @@ export const StatsOverlay: React.FC<StatsOverlayProps> = ({
           </div>
           <div className="flex justify-between items-center gap-4">
             <StatTitle icon={Zap}>Pace</StatTitle>
-            <StatValue>{currentStats.pace}</StatValue>
+            <StatValue className="font-bold">{currentStats.pace}</StatValue>
           </div>
           <div className="flex justify-between items-center gap-4">
             <StatTitle icon={MapPin}>Distance</StatTitle>
-            <StatValue>{currentStats.distance}</StatValue>
+            <StatValue className="font-bold">{currentStats.distance}</StatValue>
           </div>
           <div className="flex justify-between items-center gap-4">
             <StatTitle icon={Mountain}>Elevation</StatTitle>
-            <StatValue>{currentStats.elevationGain}</StatValue>
+            <StatValue className="font-bold">
+              {currentStats.elevationGain}
+            </StatValue>
           </div>
           <div className="flex justify-between items-center gap-4">
             <StatTitle icon={Clock}>Time</StatTitle>
-            <StatValue>{currentStats.time}</StatValue>
+            <StatValue className="font-bold">{currentStats.time}</StatValue>
           </div>
         </div>
       )}

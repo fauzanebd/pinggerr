@@ -42,6 +42,12 @@ export function ThreeDStories({
   const [isLoadingStreams, setIsLoadingStreams] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Spacebar triple-press state
+  const [spacebarPressCount, setSpacebarPressCount] = useState(0);
+  const spacebarCountRef = useRef(0); // Use ref for the actual counting logic
+  const spacebarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const spacebarCooldownRef = useRef<boolean>(false);
+
   // Orientation state
   const [orientation, setOrientation] = useState<
     "landscape" | "portrait" | "square" | "fourFive"
@@ -165,10 +171,91 @@ export function ThreeDStories({
   }, [activity.id, stravaApi, enhancedActivity.trackpoints]);
 
   // Playback controls
-  const togglePlayback = () => {
-    if (exportProgress.isExporting) return; // Don't allow playback during export
-    setFlyoverState((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
-  };
+  const togglePlayback = useCallback(() => {
+    if (exportProgress.isExporting) {
+      return; // Don't allow playback during export
+    }
+    setFlyoverState((prev) => {
+      console.log("▶️ Toggling playback:", prev.isPlaying ? "PAUSE" : "PLAY");
+      return { ...prev, isPlaying: !prev.isPlaying };
+    });
+  }, [exportProgress.isExporting]);
+
+  // Spacebar triple-press handler
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle spacebar and only if not typing in an input
+      if (
+        event.code === "Space" &&
+        event.target instanceof HTMLElement &&
+        !["INPUT", "TEXTAREA"].includes(event.target.tagName)
+      ) {
+        event.preventDefault(); // Prevent page scroll
+
+        // Skip if in cooldown period (check synchronously with ref)
+        if (spacebarCooldownRef.current) {
+          console.log("Blocked by cooldown");
+          return;
+        }
+
+        // Clear existing timeout
+        if (spacebarTimeoutRef.current) {
+          clearTimeout(spacebarTimeoutRef.current);
+        }
+
+        // Increment count using ref (synchronous, not batched by React)
+        spacebarCountRef.current += 1;
+        const newCount = spacebarCountRef.current;
+
+        // Update state for visual display only
+        setSpacebarPressCount(newCount);
+
+        console.log("Spacebar press count:", newCount);
+
+        // If we've reached 3 presses, trigger playback
+        if (newCount === 3) {
+          console.log("🎯 3 presses detected! Triggering playback...");
+
+          // Set cooldown IMMEDIATELY (synchronous ref update)
+          spacebarCooldownRef.current = true;
+
+          // Reset count ref immediately
+          spacebarCountRef.current = 0;
+
+          // Trigger playback
+          togglePlayback();
+
+          // Reset visual state after brief delay to show all 3 dots
+          setTimeout(() => {
+            setSpacebarPressCount(0);
+          }, 300);
+
+          // Clear cooldown after 1.5 seconds
+          setTimeout(() => {
+            spacebarCooldownRef.current = false;
+            console.log("Cooldown cleared");
+          }, 1500);
+
+          return;
+        }
+
+        // Reset count after 1 second of inactivity
+        spacebarTimeoutRef.current = setTimeout(() => {
+          spacebarCountRef.current = 0;
+          setSpacebarPressCount(0);
+        }, 1000);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (spacebarTimeoutRef.current) {
+        clearTimeout(spacebarTimeoutRef.current);
+      }
+    };
+  }, [togglePlayback]); // Dependency on togglePlayback to have the latest version
 
   const resetFlyover = () => {
     if (exportProgress.isExporting) return; // Don't allow reset during export
@@ -597,6 +684,9 @@ export function ThreeDStories({
                     : orientation === "fourFive"
                     ? "4/5"
                     : "1/1",
+                maxHeight: "90vh",
+                width: "auto",
+                margin: "0 auto",
               }}
             >
               <FlyoverMap
@@ -615,6 +705,27 @@ export function ThreeDStories({
           </div>
         </CardContent>
       </Card>
+
+      {/* Spacebar Press Toast - Fixed position bottom right */}
+      {spacebarPressCount > 0 && (
+        <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-2 fade-in duration-200">
+          <div className="bg-gray-900/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-3">
+            <span className="text-xs font-medium opacity-80">Space</span>
+            <div className="flex gap-1.5">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={`w-2.5 h-2.5 rounded-full transition-all duration-150 ${
+                    i <= spacebarPressCount
+                      ? "bg-green-400 scale-110"
+                      : "bg-gray-600"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

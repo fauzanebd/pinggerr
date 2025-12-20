@@ -20,6 +20,7 @@ import type {
 } from "@/types/strava";
 import constants from "@/lib/constants";
 import { StatsOverlay } from "@/components/StatsOverlay";
+import { SiksorogoStatsOverlay } from "./SiksorogoStatsOverlay";
 
 interface FlyoverMapProps {
   activity: StravaActivity;
@@ -199,13 +200,44 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         const [lng, lat] = alongPath.geometry.coordinates;
         const targetPosition = { lng, lat };
 
-        map.current.setPaintProperty("gps-path-line", "line-gradient", [
-          "step",
-          ["line-progress"],
-          "#FFEC51",
-          animationPhase,
-          "rgba(0, 0, 0, 0)",
-        ]);
+        // Update progress line geometry (fast!) instead of paint property (slow)
+        const progressLineSource = map.current.getSource(
+          "progress-line"
+        ) as mapboxgl.GeoJSONSource;
+        if (progressLineSource) {
+          // Find all coordinates that come before the current distance
+          const progressCoords: number[][] = [];
+          let accumulatedDist = 0;
+
+          for (let i = 0; i < coordinates.length; i++) {
+            if (i === 0) {
+              progressCoords.push(coordinates[i]);
+              continue;
+            }
+
+            const segmentDist = turf.distance(
+              turf.point(coordinates[i - 1]),
+              turf.point(coordinates[i]),
+              { units: "kilometers" }
+            );
+
+            if (accumulatedDist + segmentDist <= currentDistance) {
+              progressCoords.push(coordinates[i]);
+              accumulatedDist += segmentDist;
+            } else {
+              break;
+            }
+          }
+
+          // Add the exact current position at the end
+          progressCoords.push([lng, lat]);
+
+          progressLineSource.setData({
+            type: "Feature",
+            properties: {},
+            geometry: { type: "LineString", coordinates: progressCoords },
+          });
+        }
 
         const progressSource = map.current.getSource(
           "progress-point"
@@ -436,13 +468,45 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             const targetPosition = { lng, lat };
 
             if (map.current) {
-              map.current.setPaintProperty("gps-path-line", "line-gradient", [
-                "step",
-                ["line-progress"],
-                "#FFEC51",
-                animationPhase,
-                "rgba(0, 0, 0, 0)",
-              ]);
+              // Update progress line geometry (fast!) instead of paint property (slow)
+              const progressLineSource = map.current.getSource(
+                "progress-line"
+              ) as mapboxgl.GeoJSONSource;
+              if (progressLineSource) {
+                // Find all coordinates that come before the current distance
+                // and add the exact current position at the end
+                const progressCoords: number[][] = [];
+                let accumulatedDist = 0;
+
+                for (let i = 0; i < coordinates.length; i++) {
+                  if (i === 0) {
+                    progressCoords.push(coordinates[i]);
+                    continue;
+                  }
+
+                  const segmentDist = turf.distance(
+                    turf.point(coordinates[i - 1]),
+                    turf.point(coordinates[i]),
+                    { units: "kilometers" }
+                  );
+
+                  if (accumulatedDist + segmentDist <= currentDistance) {
+                    progressCoords.push(coordinates[i]);
+                    accumulatedDist += segmentDist;
+                  } else {
+                    break;
+                  }
+                }
+
+                // Add the exact current position at the end
+                progressCoords.push([lng, lat]);
+
+                progressLineSource.setData({
+                  type: "Feature",
+                  properties: {},
+                  geometry: { type: "LineString", coordinates: progressCoords },
+                });
+              }
 
               const progressSource = map.current.getSource(
                 "progress-point"
@@ -651,21 +715,76 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           },
         });
 
+        // Progress line - separate source for smooth updates via geometry changes
+        mapInstance.addSource("progress-line", {
+          type: "geojson",
+          lineMetrics: true,
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: [coordinates[0], coordinates[0]],
+            },
+          },
+        });
+
         mapInstance.addLayer({
           id: "gps-path-line",
           type: "line",
-          source: "gps-path",
+          source: "progress-line",
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": "#FFEC51",
+            "line-color": "#EEB11A",
             "line-width": 4,
-            "line-opacity": 0.8,
+            "line-opacity": 0.9,
+            // Static gradient - cycles from #EEB11A to #FFDD5C repeatedly
             "line-gradient": [
-              "step",
+              "interpolate",
+              ["linear"],
               ["line-progress"],
-              "#FFEC51",
               0,
-              "rgba(0, 0, 0, 0)",
+              "#EEB11A",
+              0.05,
+              "#FFDD5C",
+              0.1,
+              "#EEB11A",
+              0.15,
+              "#FFDD5C",
+              0.2,
+              "#EEB11A",
+              0.25,
+              "#FFDD5C",
+              0.3,
+              "#EEB11A",
+              0.35,
+              "#FFDD5C",
+              0.4,
+              "#EEB11A",
+              0.45,
+              "#FFDD5C",
+              0.5,
+              "#EEB11A",
+              0.55,
+              "#FFDD5C",
+              0.6,
+              "#EEB11A",
+              0.65,
+              "#FFDD5C",
+              0.7,
+              "#EEB11A",
+              0.75,
+              "#FFDD5C",
+              0.8,
+              "#EEB11A",
+              0.85,
+              "#FFDD5C",
+              0.9,
+              "#EEB11A",
+              0.95,
+              "#FFDD5C",
+              1.0,
+              "#EEB11A",
             ],
           },
         });
@@ -685,7 +804,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           source: "progress-point",
           paint: {
             "circle-radius": 8,
-            "circle-color": "#0B0033",
+            "circle-color": "#628141",
             "circle-stroke-width": 2,
             "circle-stroke-color": "#FFFFFF",
           },
@@ -750,16 +869,29 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
       setCurrentTrackpointIndex(0);
 
       try {
-        map.current.setPaintProperty("gps-path-line", "line-gradient", [
-          "step",
-          ["line-progress"],
-          "#FFEC51",
-          0,
-          "rgba(0, 0, 0, 0)",
-        ]);
-
+        // Reset progress line to start
         const first = validTrackpoints.current[0];
         if (first?.longitude && first?.latitude) {
+          const progressLineSource = map.current.getSource(
+            "progress-line"
+          ) as mapboxgl.GeoJSONSource;
+          if (progressLineSource) {
+            progressLineSource.setData({
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: [
+                  [first.longitude, first.latitude],
+                  [first.longitude, first.latitude],
+                ],
+              },
+            });
+          }
+        }
+
+        const firstTp = validTrackpoints.current[0];
+        if (firstTp?.longitude && firstTp?.latitude) {
           const source = map.current.getSource(
             "progress-point"
           ) as mapboxgl.GeoJSONSource;
@@ -769,7 +901,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
               properties: {},
               geometry: {
                 type: "Point",
-                coordinates: [first.longitude, first.latitude],
+                coordinates: [firstTp.longitude, firstTp.latitude],
               },
             });
           }
@@ -778,7 +910,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           const cameraPos = computeCameraPosition(
             constants.PITCH_START,
             constants.BEARING_START,
-            { lng: first.longitude, lat: first.latitude },
+            { lng: firstTp.longitude, lat: firstTp.latitude },
             constants.ALTITUDE_START,
             false
           );
@@ -881,7 +1013,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         />
         {/* Stats Overlay - now receives reactive state */}
         {isMapLoaded && validTrackpoints.current.length > 0 && (
-          <StatsOverlay
+          <SiksorogoStatsOverlay
             activity={activity}
             currentTrackpoint={
               validTrackpoints.current[currentTrackpointIndex] // Use state instead of ref
