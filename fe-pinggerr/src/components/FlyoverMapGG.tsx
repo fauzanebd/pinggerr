@@ -59,7 +59,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
       onExportComplete,
       onExportError,
     },
-    ref
+    ref,
   ) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
@@ -78,7 +78,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
     const animationFrame = useRef<number | null>(null);
     const pathDistance = useRef<number>(0);
     const previousCameraPosition = useRef<{ lng: number; lat: number } | null>(
-      null
+      null,
     );
     const validTrackpoints = useRef<ActivityTrackpoint[]>([]);
     const isAnimating = useRef<boolean>(false);
@@ -107,7 +107,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         bearing: number,
         targetPosition: { lng: number; lat: number },
         altitude: number,
-        smooth: boolean = false
+        smooth: boolean = false,
       ) => {
         const bearingInRadian = bearing / 57.29;
         const pitchInRadian = (90 - pitch) / 57.29;
@@ -118,7 +118,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           111320 * Math.cos((latDeg * Math.PI) / 180);
 
         const metersPerDegreeLongitude = metersPerDegreeLongitudeAtLatitude(
-          targetPosition.lat
+          targetPosition.lat,
         );
 
         const horizonDist = altitude / Math.tan(pitchInRadian);
@@ -142,12 +142,12 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             lng: lerp(
               previousCameraPosition.current.lng,
               newCameraPosition.lng,
-              alpha
+              alpha,
             ),
             lat: lerp(
               previousCameraPosition.current.lat,
               newCameraPosition.lat,
-              alpha
+              alpha,
             ),
           };
         }
@@ -155,7 +155,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         previousCameraPosition.current = newCameraPosition;
         return newCameraPosition;
       },
-      []
+      [],
     );
 
     // Enhanced animation function for export (no smoothing, precise positioning)
@@ -182,7 +182,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
 
         // Calculate current trackpoint index based on animation phase
         const targetIndex = Math.floor(
-          animationPhase * (validTrackpoints.current.length - 1)
+          animationPhase * (validTrackpoints.current.length - 1),
         );
         // Update both ref and state
         currentTrackpointIndexRef.current = targetIndex;
@@ -202,7 +202,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
 
         // Update progress line geometry (fast!) instead of paint property (slow)
         const progressLineSource = map.current.getSource(
-          "progress-line"
+          "progress-line",
         ) as mapboxgl.GeoJSONSource;
         if (progressLineSource) {
           // Find all coordinates that come before the current distance
@@ -218,7 +218,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             const segmentDist = turf.distance(
               turf.point(coordinates[i - 1]),
               turf.point(coordinates[i]),
-              { units: "kilometers" }
+              { units: "kilometers" },
             );
 
             if (accumulatedDist + segmentDist <= currentDistance) {
@@ -240,7 +240,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         }
 
         const progressSource = map.current.getSource(
-          "progress-point"
+          "progress-point",
         ) as mapboxgl.GeoJSONSource;
         if (progressSource) {
           progressSource.setData({
@@ -256,7 +256,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           bearing,
           targetPosition,
           altitude,
-          false
+          false,
         );
 
         if (
@@ -276,12 +276,12 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           camera.setPitchBearing(pitch, bearing);
           camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
             cameraPosition,
-            cameraAltitudeAboveSea
+            cameraAltitudeAboveSea,
           );
           map.current.setFreeCameraOptions(camera);
         }
       },
-      [computeCameraPosition]
+      [computeCameraPosition],
     );
 
     const showFinalViewForExport = useCallback((): Promise<void> => {
@@ -341,18 +341,18 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             orientation === "landscape"
               ? 1920
               : orientation === "portrait"
-              ? 1080
-              : orientation === "fourFive"
-              ? 1080
-              : 1080, // square
+                ? 1080
+                : orientation === "fourFive"
+                  ? 1080
+                  : 1080, // square
           height:
             orientation === "landscape"
               ? 1080
               : orientation === "portrait"
-              ? 1920
-              : orientation === "fourFive"
-              ? 1350 // 4:5
-              : 1080, // square
+                ? 1920
+                : orientation === "fourFive"
+                  ? 1350 // 4:5
+                  : 1080, // square
           fps: quality === "high" ? 60 : 24,
           duration: constants.DEFAULT_DURATION_SECONDS, // Main animation duration
           quality,
@@ -363,7 +363,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             map.current,
             animateExportFrame,
             showFinalViewForExport, // Add the final view function
-            settings
+            settings,
           );
           onExportComplete?.(videoBlob);
         } catch (error) {
@@ -381,7 +381,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         showFinalViewForExport,
         onExportComplete,
         onExportError,
-      ]
+      ],
     );
 
     // Expose methods via ref
@@ -433,7 +433,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
 
             const animationPhase = Math.min(
               (currentTime - startTime) / duration,
-              1
+              1,
             );
 
             if (!flyoverState.isPlaying) {
@@ -448,7 +448,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
 
             // Update current trackpoint index
             const targetIndex = Math.floor(
-              animationPhase * (validTrackpoints.current.length - 1)
+              animationPhase * (validTrackpoints.current.length - 1),
             );
             // Update both ref and state
             currentTrackpointIndexRef.current = targetIndex;
@@ -470,7 +470,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             if (map.current) {
               // Update progress line geometry (fast!) instead of paint property (slow)
               const progressLineSource = map.current.getSource(
-                "progress-line"
+                "progress-line",
               ) as mapboxgl.GeoJSONSource;
               if (progressLineSource) {
                 // Find all coordinates that come before the current distance
@@ -487,7 +487,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
                   const segmentDist = turf.distance(
                     turf.point(coordinates[i - 1]),
                     turf.point(coordinates[i]),
-                    { units: "kilometers" }
+                    { units: "kilometers" },
                   );
 
                   if (accumulatedDist + segmentDist <= currentDistance) {
@@ -509,7 +509,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
               }
 
               const progressSource = map.current.getSource(
-                "progress-point"
+                "progress-point",
               ) as mapboxgl.GeoJSONSource;
               if (progressSource) {
                 progressSource.setData({
@@ -526,7 +526,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
               bearing,
               targetPosition,
               altitude,
-              true
+              true,
             );
 
             if (
@@ -547,7 +547,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
                 camera.setPitchBearing(pitch, bearing);
                 camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
                   cameraPosition,
-                  cameraAltitudeAboveSea
+                  cameraAltitudeAboveSea,
                 );
                 map.current.setFreeCameraOptions(camera);
               } catch (error) {
@@ -561,7 +561,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           animationFrame.current = requestAnimationFrame(animateFrame);
         });
       },
-      [flyoverState.isPlaying, computeCameraPosition]
+      [flyoverState.isPlaying, computeCameraPosition],
     );
 
     // Effect: Initialize map
@@ -589,7 +589,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           }
 
           validTrackpoints.current = trackpoints.filter(
-            (tp) => tp.latitude && tp.longitude
+            (tp) => tp.latitude && tp.longitude,
           );
           if (validTrackpoints.current.length === 0) {
             throw new Error("No valid GPS coordinates found");
@@ -598,9 +598,15 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           const startCoord = validTrackpoints.current[0];
           const mapInstance = new mapboxgl.Map({
             container: mapContainer.current!,
-            // style: "mapbox://styles/mapbox/satellite-v9",
-            style: "mapbox://styles/mapbox/satellite-streets-v12",
-            // style: "mapbox://styles/mapbox/standard-satellite",
+            // style: "mapbox://styles/mapbox/satellite-v9",
+            style: "mapbox://styles/mapbox/standard-satellite",
+            // style: "mapbox://styles/mapbox/satellite-streets-v12",
+            // style: "mapbox://styles/mapbox/standard",
+            config: {
+              basemap: {
+                lightPreset: "night",
+              },
+            },
             center: [startCoord.longitude!, startCoord.latitude!],
             zoom:
               orientation === "portrait" || orientation === "fourFive"
@@ -615,6 +621,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           map.current = mapInstance;
 
           mapInstance.on("load", () => {
+            // Mapbox Standard includes built-in 3D terrain and lighting (night preset)
             mapInstance.addSource("mapbox-dem", {
               type: "raster-dem",
               url: "mapbox://mapbox.terrain-rgb",
@@ -623,22 +630,47 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             });
             mapInstance.setTerrain({ source: "mapbox-dem" });
 
-            mapInstance.setFog({
-              range: [0.5, 10],
-              color: "white",
-              "horizon-blend": 0.2,
-            });
+            const zoomBasedReveal = (value: number) => {
+              return [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                11,
+                0.0,
+                13,
+                value,
+              ] as mapboxgl.ExpressionSpecification;
+            };
 
-            mapInstance.addLayer({
-              id: "sky",
-              type: "sky",
-              paint: {
-                "sky-type": "atmosphere",
-                "sky-atmosphere-sun": [0.0, 0.0],
-                "sky-atmosphere-sun-intensity": 15,
-                "sky-atmosphere-color": "rgba(85, 151, 210, 0.5)",
-              },
-            });
+            // mapInstance.setRain({
+            //   density: zoomBasedReveal(0.2),
+            //   intensity: 1.0,
+            //   color: "#a8adbc",
+            //   opacity: 0.4,
+            //   vignette: zoomBasedReveal(1.0),
+            //   "vignette-color": "#464646",
+            //   direction: [0, 80],
+            //   "droplet-size": [1.6, 8.2],
+            //   "distortion-strength": 0.7,
+            //   "center-thinning": 0, // Rain to be displayed on the whole screen area
+            // });
+
+            // mapInstance.setFog({
+            //   range: [0.5, 10],
+            //   color: "white",
+            //   "horizon-blend": 0.2,
+            // });
+
+            // mapInstance.addLayer({
+            //   id: "sky",
+            //   type: "sky",
+            //   paint: {
+            //     "sky-type": "atmosphere",
+            //     "sky-atmosphere-sun": [0.0, 0.0],
+            //     "sky-atmosphere-sun-intensity": 15,
+            //     "sky-atmosphere-color": "rgba(85, 151, 210, 0.5)",
+            //   },
+            // });
 
             addGpsPath(mapInstance, validTrackpoints.current);
             setIsMapLoaded(true);
@@ -651,7 +683,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         } catch (error) {
           console.error("Map initialization error:", error);
           setMapError(
-            error instanceof Error ? error.message : "Failed to initialize map"
+            error instanceof Error ? error.message : "Failed to initialize map",
           );
         }
       };
@@ -712,6 +744,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             "line-color": "#FFEC51",
             "line-width": 2,
             "line-opacity": 0.3,
+            "line-emissive-strength": 0.6,
           },
         });
 
@@ -738,6 +771,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             "line-color": "#EEB11A",
             "line-width": 4,
             "line-opacity": 0.9,
+            "line-emissive-strength": 0.8,
             // Static gradient - cycles from #EEB11A to #FFDD5C repeatedly
             "line-gradient": [
               "interpolate",
@@ -807,10 +841,11 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             "circle-color": "#628141",
             "circle-stroke-width": 2,
             "circle-stroke-color": "#FFFFFF",
+            "circle-emissive-strength": 0.8,
           },
         });
       },
-      []
+      [],
     );
 
     // Reset animation state
@@ -854,7 +889,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
           essential: true,
         });
       },
-      []
+      [],
     );
 
     // Handle reset signal: reset state and visuals back to start
@@ -873,7 +908,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         const first = validTrackpoints.current[0];
         if (first?.longitude && first?.latitude) {
           const progressLineSource = map.current.getSource(
-            "progress-line"
+            "progress-line",
           ) as mapboxgl.GeoJSONSource;
           if (progressLineSource) {
             progressLineSource.setData({
@@ -893,7 +928,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         const firstTp = validTrackpoints.current[0];
         if (firstTp?.longitude && firstTp?.latitude) {
           const source = map.current.getSource(
-            "progress-point"
+            "progress-point",
           ) as mapboxgl.GeoJSONSource;
           if (source) {
             source.setData({
@@ -912,11 +947,11 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
             constants.BEARING_START,
             { lng: firstTp.longitude, lat: firstTp.latitude },
             constants.ALTITUDE_START,
-            false
+            false,
           );
           camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
             cameraPos,
-            constants.ALTITUDE_START
+            constants.ALTITUDE_START,
           );
           map.current.setFreeCameraOptions(camera);
         }
@@ -1032,7 +1067,7 @@ export const FlyoverMap = forwardRef<FlyoverMapHandle, FlyoverMapProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 FlyoverMap.displayName = "FlyoverMap";
