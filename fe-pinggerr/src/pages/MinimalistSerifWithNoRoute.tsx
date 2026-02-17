@@ -37,6 +37,7 @@ export function MinimalistSerifWithNoRoute({
       "distance",
       "pace",
       "time",
+      "elapsed",
       "speed",
       "elevation",
       "date",
@@ -70,6 +71,7 @@ export function MinimalistSerifWithNoRoute({
       "distance",
       "pace",
       "time",
+      "elapsed",
       "speed",
       "elevation",
       "date",
@@ -165,6 +167,11 @@ export function MinimalistSerifWithNoRoute({
       label: "Time",
       value: formatTime(activity.moving_time),
       shortLabel: "TIME",
+    },
+    elapsed: {
+      label: "Elapsed",
+      value: formatTime(activity.elapsed_time),
+      shortLabel: "ELAPSED",
     },
     speed: {
       label: "Avg. Speed",
